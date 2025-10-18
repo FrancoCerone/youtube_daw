@@ -5,6 +5,7 @@ import TransportControls from './components/TransportControls';
 import Timeline from './components/Timeline';
 import Track from './components/Track';
 import EmptyState from './components/EmptyState';
+import PlayerManager from './components/PlayerManager';
 import useDawStore from './store/dawStore';
 
 const App: React.FC = () => {
@@ -55,6 +56,9 @@ const App: React.FC = () => {
             <p>YouTube DAW - Drag & drop clips, trim audio, and mix tracks in real-time</p>
           </div>
         </footer>
+
+        {/* Player Manager - gestisce l'aggiornamento del tempo */}
+        <PlayerManager />
       </div>
     </DndProvider>
   );

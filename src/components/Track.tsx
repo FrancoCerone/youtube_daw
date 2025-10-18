@@ -24,7 +24,7 @@ interface DropPreview {
 }
 
 const Track: React.FC<TrackProps> = ({ track }) => {
-  const { addClip, updateClip, removeClip, duration } = useDawStore();
+  const { addClip, updateClip, removeClip, duration, currentTime, isPlaying } = useDawStore();
   const [showInput, setShowInput] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [clipSettings, setClipSettings] = useState({
@@ -214,6 +214,17 @@ const Track: React.FC<TrackProps> = ({ track }) => {
           {track.clips.map((clip) => (
             <Clip key={clip.id} clip={clip} trackId={track.id} />
           ))}
+
+          {/* Playhead - cursore di riproduzione sulla traccia */}
+          <div
+            className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-20 pointer-events-none"
+            style={{ 
+              left: `${(currentTime / duration) * 100}%`,
+              boxShadow: isPlaying ? '0 0 8px rgba(239, 68, 68, 0.5)' : 'none'
+            }}
+          >
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2 h-2 bg-red-500 rounded-full shadow-lg" />
+          </div>
 
           {/* Drop Preview - mostra dove la clip verrà rilasciata */}
           {dropPreview && isOver && (

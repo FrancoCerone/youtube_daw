@@ -9,10 +9,16 @@ const PlayerManager: React.FC = () => {
   const audioSourcesRef = useRef<Record<number, AudioBufferSourceNode>>({});
   const animationFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
+  const playStartTimeRef = useRef<number>(0);
 
   // Inizializza AudioContext
   useEffect(() => {
-    audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    try {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      console.log('AudioContext initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize AudioContext:', error);
+    }
     
     return () => {
       if (audioContextRef.current) {
@@ -60,62 +66,30 @@ const PlayerManager: React.FC = () => {
     });
   }, [tracks]);
 
-  // Gestione riproduzione
+  // Gestione riproduzione con metodo più semplice e affidabile
   useEffect(() => {
-    if (!audioContextRef.current) return;
+    console.log('PlayerManager effect triggered. isPlaying:', isPlaying);
 
     if (isPlaying) {
-      startTimeRef.current = audioContextRef.current.currentTime - currentTime;
+      // Salva il tempo di inizio della riproduzione
+      playStartTimeRef.current = performance.now() / 1000 - currentTime;
       
-      // Avvia la riproduzione di tutte le clip che devono suonare
-      tracks.forEach(track => {
-        track.clips.forEach(clip => {
-          const buffer = audioBuffersRef.current[clip.id];
-          if (!buffer || !audioContextRef.current) return;
-          
-          const clipStart = clip.startTime;
-          const clipEnd = clip.endTime;
-          
-          // Calcola quando deve iniziare/finire nella timeline audio
-          const startTime = audioContextRef.current.currentTime + (clipStart - currentTime);
-          const duration = clipEnd - clipStart;
-          
-          if (startTime + duration > audioContextRef.current.currentTime) {
-            const source = audioContextRef.current.createBufferSource();
-            source.buffer = buffer;
-            source.connect(audioContextRef.current.destination);
-            
-            const offset = Math.max(0, currentTime - clipStart);
-            const when = Math.max(audioContextRef.current.currentTime, startTime);
-            
-            source.start(when, offset, duration - offset);
-            audioSourcesRef.current[clip.id] = source;
-          }
-        });
-      });
+      console.log('Starting playback. currentTime:', currentTime);
       
-      // Aggiorna il tempo corrente
+      // Aggiorna il tempo corrente con animazione fluida usando performance.now()
       const updateTime = () => {
-        if (!audioContextRef.current || !startTimeRef.current) return;
-        const elapsed = audioContextRef.current.currentTime - startTimeRef.current;
+        const elapsed = performance.now() / 1000 - playStartTimeRef.current;
         setCurrentTime(elapsed);
         animationFrameRef.current = requestAnimationFrame(updateTime);
       };
       updateTime();
       
     } else {
-      // Stop tutti i source
-      Object.values(audioSourcesRef.current).forEach(source => {
-        try {
-          source.stop();
-        } catch (e) {
-          // Already stopped
-        }
-      });
-      audioSourcesRef.current = {};
-      
+      // Ferma l'aggiornamento del tempo
+      console.log('Stopping playback');
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
       }
     }
     
@@ -124,16 +98,21 @@ const PlayerManager: React.FC = () => {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [isPlaying, currentTime, tracks, setCurrentTime]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlaying]);
 
   return (
-    <div className="fixed bottom-2 right-2 bg-gray-900/90 text-white p-2 rounded-lg text-xs z-50">
-      <div className="flex items-center gap-2">
-        <div className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />
-        <span>Audio: {isPlaying ? 'Playing' : 'Stopped'} | {currentTime.toFixed(1)}s</span>
+    <div className="fixed bottom-2 right-2 bg-gray-900/90 text-white p-3 rounded-lg text-xs z-50 border border-gray-700 shadow-lg">
+      <div className="font-bold text-blue-400 mb-2">Player Manager</div>
+      <div className="flex items-center gap-2 mb-1">
+        <div className={`w-3 h-3 rounded-full ${isPlaying ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />
+        <span className="font-semibold">Status: {isPlaying ? '▶️ Playing' : '⏸️ Stopped'}</span>
       </div>
-      <div className="text-gray-400 mt-1">
-        {tracks.reduce((count, t) => count + t.clips.length, 0)} clips loaded
+      <div className="text-gray-300 mb-1">
+        ⏱️ Time: <span className="font-mono text-green-400">{currentTime.toFixed(2)}s</span>
+      </div>
+      <div className="text-gray-400">
+        🎵 Clips: {tracks.reduce((count, t) => count + t.clips.length, 0)}
       </div>
     </div>
   );

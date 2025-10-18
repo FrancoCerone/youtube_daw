@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import useDawStore from '../store/dawStore';
 
 const Timeline: React.FC = () => {
-  const { duration, currentTime } = useDawStore();
+  const { duration, currentTime, isPlaying } = useDawStore();
   const timelineRef = useRef<HTMLDivElement>(null);
 
   // Genera i marker temporali
@@ -36,12 +36,19 @@ const Timeline: React.FC = () => {
           ))}
         </div>
 
-        {/* Playhead */}
+        {/* Playhead - cursore di riproduzione */}
         <div
-          className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10 pointer-events-none"
-          style={{ left: `${(currentTime / duration) * 100}%` }}
+          className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10 pointer-events-none transition-opacity"
+          style={{ 
+            left: `${(currentTime / duration) * 100}%`,
+            boxShadow: isPlaying ? '0 0 10px rgba(239, 68, 68, 0.6)' : 'none'
+          }}
         >
-          <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-red-500 rotate-45"></div>
+          <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-red-500 rotate-45 shadow-lg">
+            {isPlaying && (
+              <div className="absolute inset-0 bg-red-400 animate-ping opacity-75" />
+            )}
+          </div>
         </div>
       </div>
     </div>
