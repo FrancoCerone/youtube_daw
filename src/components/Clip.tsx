@@ -55,6 +55,10 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
 
   // Determina se questa clip dovrebbe essere in riproduzione
   const shouldPlay = isPlaying && currentTime >= clip.startTime && currentTime < clip.endTime;
+  
+  // Determina se il video dovrebbe essere visibile/audibile
+  // Se il player globale è in play, tutti i video partono ma solo quello attivo ha audio
+  const shouldBeActive = shouldPlay;
 
   return (
     <>
@@ -97,18 +101,33 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
         {/* Video YouTube embedded diretto */}
         <div className="absolute inset-0 bg-black" style={{ top: '24px' }}>
           {clip.url ? (
-            <iframe
-              src={`https://www.youtube.com/embed/${getYouTubeId(clip.url)}?autoplay=${shouldPlay ? 1 : 0}&controls=1&start=${Math.floor(clip.clipStart || 0)}&mute=${shouldPlay ? 0 : 1}`}
-              title={clip.title}
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              style={{
-                width: '100%',
-                height: '100%',
-                border: 'none',
-              }}
-            />
+            <div className="relative w-full h-full">
+              {/* L'iframe viene renderizzato SOLO quando il cursore è nella clip */}
+              {shouldBeActive ? (
+                <iframe
+                  key={`clip-${clip.id}-active`}
+                  src={`https://www.youtube.com/embed/${getYouTubeId(clip.url)}?autoplay=1&controls=1&start=${Math.floor(clip.clipStart || 0)}&mute=0&enablejsapi=1`}
+                  title={clip.title}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    border: 'none',
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                  <div className="text-center">
+                    <div className="text-gray-400 text-xs mb-1">{clip.title}</div>
+                    <div className="text-gray-500 text-xs">
+                      {isPlaying ? '⏸️ Not in range' : '⏹️ Stopped'}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           ) : (
             <div className="flex items-center justify-center h-full text-gray-400 text-xs">
               No URL
@@ -118,7 +137,7 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
         
         {/* Debug info */}
         <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-1 z-20">
-          URL: {clip.url ? '✓' : '✗'} | Playing: {shouldPlay ? 'YES' : 'NO'}
+          URL: {clip.url ? '✓' : '✗'} | Active: {shouldBeActive ? 'YES' : 'NO'} | Time: {currentTime.toFixed(1)}s / Range: {clip.startTime}-{clip.endTime}
         </div>
 
         {/* Overlay per drag (non blocca il video quando non in drag) */}
