@@ -22,6 +22,9 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
   const { updateClip, removeClip, duration, isPlaying, currentTime } = useDawStore();
   const clipRef = useRef<HTMLDivElement>(null);
   const [showInfo, setShowInfo] = useState(false);
+  const [isResizing, setIsResizing] = useState<'left' | 'right' | null>(null);
+  const resizeStartXRef = useRef<number>(0);
+  const resizeStartValuesRef = useRef({ startTime: 0, endTime: 0 });
 
   const [{ isDragging }, drag] = useDrag({
     type: 'CLIP',
@@ -53,6 +56,54 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
     updateClip(trackId, clip.id, updates);
   };
 
+  // Gestione resize - inizio
+  const handleResizeStart = (e: React.MouseEvent, side: 'left' | 'right') => {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    setIsResizing(side);
+    resizeStartXRef.current = e.clientX;
+    resizeStartValuesRef.current = {
+      startTime: clip.startTime,
+      endTime: clip.endTime,
+    };
+  };
+
+  // Gestione resize - movimento (solo da destra)
+  React.useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!clipRef.current) return;
+      
+      const container = clipRef.current.parentElement;
+      if (!container) return;
+
+      const deltaX = e.clientX - resizeStartXRef.current;
+      const containerWidth = container.offsetWidth;
+      const deltaTime = (deltaX / containerWidth) * duration;
+
+      // Ridimensiona da destra - cambia solo endTime (durata)
+      const newEndTime = Math.min(duration, Math.max(
+        resizeStartValuesRef.current.startTime + 1, // Min 1 secondo di durata
+        resizeStartValuesRef.current.endTime + deltaTime
+      ));
+      updateClip(trackId, clip.id, { endTime: newEndTime });
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(null);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, clip.id, trackId, duration, updateClip]);
+
   // Determina se questa clip dovrebbe essere in riproduzione
   const shouldPlay = isPlaying && currentTime >= clip.startTime && currentTime < clip.endTime;
   
@@ -63,18 +114,23 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
   return (
     <>
       <motion.div
-        ref={drag}
+        ref={(node) => {
+          clipRef.current = node;
+          drag(node);
+        }}
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ 
-          opacity: isDragging ? 0.3 : 1, 
-          scale: isDragging ? 0.95 : 1,
+          opacity: isDragging || isResizing ? 0.3 : 1, 
+          scale: isDragging || isResizing ? 0.95 : 1,
         }}
         exit={{ opacity: 0, scale: 0.8 }}
         transition={{ duration: 0.2 }}
         onDoubleClick={handleDoubleClick}
         className={`absolute top-2 bottom-2 bg-gray-900 border-2 rounded-lg shadow-lg overflow-hidden transition-all ${
           isDragging 
-            ? 'border-yellow-400 shadow-2xl cursor-grabbing' 
+            ? 'border-yellow-400 shadow-2xl cursor-grabbing'
+            : isResizing
+            ? 'border-green-400 shadow-2xl'
             : 'border-blue-500 hover:shadow-xl hover:border-blue-400 cursor-grab'
         }`}
         style={{
@@ -83,6 +139,15 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
           minWidth: '120px',
         }}
       >
+        {/* Resize Handle - Solo Destra (controlla la durata/fine della clip) */}
+        <div
+          onMouseDown={(e) => handleResizeStart(e, 'right')}
+          className="absolute right-0 top-0 bottom-0 w-2 bg-blue-400/0 hover:bg-blue-400/50 cursor-ew-resize z-50 group transition-colors"
+          style={{ pointerEvents: 'auto' }}
+        >
+          <div className="absolute inset-y-0 right-0 w-1 bg-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
+
         {/* Header con titolo e delete */}
         <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-purple-600 px-2 py-1 flex items-center justify-between z-10">
           <div className="flex items-center gap-1 flex-1 min-w-0">
