@@ -115,6 +115,7 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
                   border: 'none',
                   display: shouldBeActive ? 'none' : 'block',
                   opacity: 0.7,
+                  pointerEvents: 'none', // Disabilita eventi per permettere drag & drop
                 }}
               />
               
@@ -134,6 +135,7 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
                     position: 'absolute',
                     top: 0,
                     left: 0,
+                    pointerEvents: isDragging ? 'none' : 'auto', // Disabilita durante il drag
                   }}
                 />
               )}
@@ -159,9 +161,14 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
           URL: {clip.url ? '✓' : '✗'} | Active: {shouldBeActive ? 'YES' : 'NO'} | Time: {currentTime.toFixed(1)}s / Range: {clip.startTime}-{clip.endTime}
         </div>
 
-        {/* Overlay per drag (non blocca il video quando non in drag) */}
+        {/* Overlay per drag - cattura gli eventi durante il drag */}
         {isDragging && (
-          <div className="absolute inset-0 bg-blue-500/20 pointer-events-none" />
+          <div className="absolute inset-0 bg-blue-500/20 z-50" />
+        )}
+        
+        {/* Overlay trasparente per catturare drag anche quando non in drag - solo sul preview */}
+        {!shouldBeActive && !isDragging && (
+          <div className="absolute inset-0 z-30 cursor-grab active:cursor-grabbing" style={{ top: '24px' }} />
         )}
       </motion.div>
 
