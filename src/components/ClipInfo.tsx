@@ -1,8 +1,15 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Clock, Scissors } from 'lucide-react';
+import { Clip } from '../types';
 
-const ClipInfo = ({ clip, onClose, onUpdate }) => {
+interface ClipInfoProps {
+  clip: Clip;
+  onClose: () => void;
+  onUpdate: (updates: Partial<Clip>) => void;
+}
+
+const ClipInfo: React.FC<ClipInfoProps> = ({ clip, onClose, onUpdate }) => {
   const [startTime, setStartTime] = React.useState(clip.clipStart || 0);
   const [endTime, setEndTime] = React.useState(clip.clipEnd || 30);
 

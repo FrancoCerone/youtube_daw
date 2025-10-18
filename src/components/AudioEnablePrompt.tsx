@@ -2,7 +2,12 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Volume2, Info } from 'lucide-react';
 
-const AudioEnablePrompt = ({ show, onEnable }) => {
+interface AudioEnablePromptProps {
+  show: boolean;
+  onEnable: () => void;
+}
+
+const AudioEnablePrompt: React.FC<AudioEnablePromptProps> = ({ show, onEnable }) => {
   return (
     <AnimatePresence>
       {show && (

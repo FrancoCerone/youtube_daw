@@ -3,10 +3,10 @@ import { Play, Pause, Square, RotateCcw, Save, FolderOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
 import useDawStore from '../store/dawStore';
 
-const TransportControls = () => {
+const TransportControls: React.FC = () => {
   const { isPlaying, currentTime, play, pause, stop, saveSession, loadSession } = useDawStore();
 
-  const formatTime = (seconds) => {
+  const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;

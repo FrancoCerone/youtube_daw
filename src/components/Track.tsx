@@ -4,8 +4,26 @@ import { motion } from 'framer-motion';
 import { Youtube, Plus } from 'lucide-react';
 import Clip from './Clip';
 import useDawStore from '../store/dawStore';
+import { Track as TrackType } from '../types';
 
-const Track = ({ track }) => {
+interface TrackProps {
+  track: TrackType;
+}
+
+interface DragItem {
+  clipId: number;
+  trackId: number;
+  startTime: number;
+  endTime: number;
+}
+
+interface DropPreview {
+  startTime: number;
+  endTime: number;
+  clipDuration: number;
+}
+
+const Track: React.FC<TrackProps> = ({ track }) => {
   const { addClip, updateClip, removeClip, duration } = useDawStore();
   const [showInput, setShowInput] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState('');
@@ -13,9 +31,9 @@ const Track = ({ track }) => {
     startTime: 0,
     endTime: 30,
   });
-  const [dropPreview, setDropPreview] = useState(null);
+  const [dropPreview, setDropPreview] = useState<DropPreview | null>(null);
 
-  const [{ isOver, canDrop }, drop] = useDrop({
+  const [{ isOver, canDrop }, drop] = useDrop<DragItem, void, { isOver: boolean; canDrop: boolean }>({
     accept: 'CLIP',
     hover: (item, monitor) => {
       if (!monitor.isOver({ shallow: true })) {
@@ -71,9 +89,12 @@ const Track = ({ track }) => {
               
               // Aggiungi alla nuova traccia
               addClip(track.id, {
-                ...clipToMove,
+                url: clipToMove.url,
+                title: clipToMove.title,
                 startTime: newStartTime,
                 endTime: newEndTime,
+                clipStart: clipToMove.clipStart,
+                clipEnd: clipToMove.clipEnd,
               });
             }
           } else {

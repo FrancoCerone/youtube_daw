@@ -7,7 +7,7 @@ import Track from './components/Track';
 import EmptyState from './components/EmptyState';
 import useDawStore from './store/dawStore';
 
-function App() {
+const App: React.FC = () => {
   const { tracks, loadSession } = useDawStore();
 
   useEffect(() => {
@@ -58,6 +58,7 @@ function App() {
       </div>
     </DndProvider>
   );
-}
+};
 
 export default App;
+

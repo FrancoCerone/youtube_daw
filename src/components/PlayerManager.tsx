@@ -1,17 +1,18 @@
 import React, { useEffect, useRef } from 'react';
 import useDawStore from '../store/dawStore';
+import { Clip } from '../types';
 
-const PlayerManager = () => {
+const PlayerManager: React.FC = () => {
   const { tracks, isPlaying, currentTime, setCurrentTime } = useDawStore();
-  const audioContextRef = useRef(null);
-  const audioBuffersRef = useRef({});
-  const audioSourcesRef = useRef({});
-  const animationFrameRef = useRef(null);
-  const startTimeRef = useRef(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioBuffersRef = useRef<Record<number, AudioBuffer>>({});
+  const audioSourcesRef = useRef<Record<number, AudioBufferSourceNode>>({});
+  const animationFrameRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number | null>(null);
 
   // Inizializza AudioContext
   useEffect(() => {
-    audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     
     return () => {
       if (audioContextRef.current) {
@@ -21,8 +22,8 @@ const PlayerManager = () => {
   }, []);
 
   // Carica audio da URL (funziona con file locali o CORS-enabled URLs)
-  const loadAudio = async (clip) => {
-    if (audioBuffersRef.current[clip.id]) return;
+  const loadAudio = async (clip: Clip) => {
+    if (audioBuffersRef.current[clip.id] || !audioContextRef.current) return;
     
     try {
       // Per ora usiamo un tone di test
@@ -61,6 +62,8 @@ const PlayerManager = () => {
 
   // Gestione riproduzione
   useEffect(() => {
+    if (!audioContextRef.current) return;
+
     if (isPlaying) {
       startTimeRef.current = audioContextRef.current.currentTime - currentTime;
       
@@ -68,7 +71,7 @@ const PlayerManager = () => {
       tracks.forEach(track => {
         track.clips.forEach(clip => {
           const buffer = audioBuffersRef.current[clip.id];
-          if (!buffer) return;
+          if (!buffer || !audioContextRef.current) return;
           
           const clipStart = clip.startTime;
           const clipEnd = clip.endTime;
@@ -93,6 +96,7 @@ const PlayerManager = () => {
       
       // Aggiorna il tempo corrente
       const updateTime = () => {
+        if (!audioContextRef.current || !startTimeRef.current) return;
         const elapsed = audioContextRef.current.currentTime - startTimeRef.current;
         setCurrentTime(elapsed);
         animationFrameRef.current = requestAnimationFrame(updateTime);
@@ -136,3 +140,4 @@ const PlayerManager = () => {
 };
 
 export default PlayerManager;
+

@@ -1,18 +1,18 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import useDawStore from '../store/dawStore';
 
-const Timeline = () => {
-  const { duration, currentTime, playheadPosition } = useDawStore();
-  const timelineRef = useRef(null);
+const Timeline: React.FC = () => {
+  const { duration, currentTime } = useDawStore();
+  const timelineRef = useRef<HTMLDivElement>(null);
 
   // Genera i marker temporali
-  const markers = [];
+  const markers: number[] = [];
   const interval = 10; // un marker ogni 10 secondi
   for (let i = 0; i <= duration; i += interval) {
     markers.push(i);
   }
 
-  const formatTime = (seconds) => {
+  const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;

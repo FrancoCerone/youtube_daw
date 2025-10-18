@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Music2, Youtube, MousePointerClick } from 'lucide-react';
 
-const EmptyState = () => {
+const EmptyState: React.FC = () => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
