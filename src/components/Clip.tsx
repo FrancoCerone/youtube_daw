@@ -102,8 +102,24 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
         <div className="absolute inset-0 bg-black" style={{ top: '24px' }}>
           {clip.url ? (
             <div className="relative w-full h-full">
-              {/* L'iframe viene renderizzato SOLO quando il cursore è nella clip */}
-              {shouldBeActive ? (
+              {/* Layer 1: Preview sempre visibile (senza audio) */}
+              <iframe
+                key={`clip-${clip.id}-preview`}
+                src={`https://www.youtube.com/embed/${getYouTubeId(clip.url)}?controls=0&start=${Math.floor(clip.clipStart || 0)}&mute=1&autoplay=0`}
+                title={`${clip.title} - Preview`}
+                frameBorder="0"
+                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  border: 'none',
+                  display: shouldBeActive ? 'none' : 'block',
+                  opacity: 0.7,
+                }}
+              />
+              
+              {/* Layer 2: Player attivo (con audio) - si monta solo quando attivo */}
+              {shouldBeActive && (
                 <iframe
                   key={`clip-${clip.id}-active`}
                   src={`https://www.youtube.com/embed/${getYouTubeId(clip.url)}?autoplay=1&controls=1&start=${Math.floor(clip.clipStart || 0)}&mute=0&enablejsapi=1`}
@@ -115,15 +131,18 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
                     width: '100%',
                     height: '100%',
                     border: 'none',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
                   }}
                 />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gray-800">
-                  <div className="text-center">
-                    <div className="text-gray-400 text-xs mb-1">{clip.title}</div>
-                    <div className="text-gray-500 text-xs">
-                      {isPlaying ? '⏸️ Not in range' : '⏹️ Stopped'}
-                    </div>
+              )}
+              
+              {/* Overlay quando la clip non è attiva */}
+              {!shouldBeActive && (
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/40 pointer-events-none flex items-end justify-center pb-8">
+                  <div className="bg-black/70 px-3 py-1 rounded-full text-xs text-gray-300">
+                    {isPlaying ? '⏸️ Waiting' : '⏹️ Ready'}
                   </div>
                 </div>
               )}
