@@ -24,7 +24,7 @@ interface DropPreview {
 }
 
 const Track: React.FC<TrackProps> = ({ track }) => {
-  const { addClip, updateClip, removeClip, duration, currentTime, isPlaying } = useDawStore();
+  const { addClip, updateClip, removeClip, duration, currentTime, isPlaying, timelineZoom, timelineScroll } = useDawStore();
   const [showInput, setShowInput] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [clipSettings, setClipSettings] = useState({
@@ -47,8 +47,10 @@ const Track: React.FC<TrackProps> = ({ track }) => {
         if (container) {
           const rect = container.getBoundingClientRect();
           const x = offset.x - rect.left;
-          const percentage = Math.max(0, Math.min(1, x / rect.width));
-          const newStartTime = percentage * duration;
+          // Converti posizione pixel in tempo considerando zoom e scroll
+          const totalWidth = duration * timelineZoom * 10;
+          const pixelTime = (x + timelineScroll) / (timelineZoom * 10);
+          const newStartTime = Math.max(0, Math.min(duration, pixelTime));
           const clipDuration = item.endTime - item.startTime;
           const newEndTime = Math.min(duration, newStartTime + clipDuration);
           
@@ -69,8 +71,9 @@ const Track: React.FC<TrackProps> = ({ track }) => {
         if (container) {
           const rect = container.getBoundingClientRect();
           const x = offset.x - rect.left;
-          const percentage = Math.max(0, Math.min(1, x / rect.width));
-          const newStartTime = percentage * duration;
+          // Converti posizione pixel in tempo considerando zoom e scroll
+          const pixelTime = (x + timelineScroll) / (timelineZoom * 10);
+          const newStartTime = Math.max(0, Math.min(duration, pixelTime));
           
           // Calcola la durata della clip per mantenere la stessa lunghezza
           const clipDuration = item.endTime - item.startTime;
@@ -200,14 +203,23 @@ const Track: React.FC<TrackProps> = ({ track }) => {
             isOver ? 'bg-blue-900/30 ring-2 ring-blue-500' : ''
           }`}
         >
-          {/* Grid lines */}
-          <div className="absolute inset-0 flex">
-            {Array.from({ length: Math.ceil(duration / 10) }).map((_, i) => (
-              <div
-                key={i}
-                className="flex-1 border-r border-gray-700/30"
-              />
-            ))}
+          {/* Grid lines con zoom */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div 
+              className="absolute inset-0 flex"
+              style={{ 
+                width: `${duration * timelineZoom * 10}px`,
+                transform: `translateX(-${timelineScroll}px)`
+              }}
+            >
+              {Array.from({ length: Math.ceil(duration / (10 / timelineZoom)) }).map((_, i) => (
+                <div
+                  key={i}
+                  className="border-r border-gray-700/30"
+                  style={{ width: `${10 * timelineZoom}px` }}
+                />
+              ))}
+            </div>
           </div>
 
           {/* Clips */}
@@ -219,7 +231,7 @@ const Track: React.FC<TrackProps> = ({ track }) => {
           <div
             className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-20 pointer-events-none"
             style={{ 
-              left: `${(currentTime / duration) * 100}%`,
+              left: `${(currentTime / duration) * (duration * timelineZoom * 10) - timelineScroll}px`,
               boxShadow: isPlaying ? '0 0 8px rgba(239, 68, 68, 0.5)' : 'none'
             }}
           >
@@ -234,8 +246,8 @@ const Track: React.FC<TrackProps> = ({ track }) => {
               exit={{ opacity: 0 }}
               className="absolute top-2 bottom-2 border-2 border-dashed border-green-400 bg-green-500/20 rounded-lg pointer-events-none z-30"
               style={{
-                left: `${(dropPreview.startTime / duration) * 100}%`,
-                width: `${(dropPreview.clipDuration / duration) * 100}%`,
+                left: `${(dropPreview.startTime / duration) * (duration * timelineZoom * 10) - timelineScroll}px`,
+                width: `${(dropPreview.clipDuration / duration) * (duration * timelineZoom * 10)}px`,
                 minWidth: '120px',
               }}
             >

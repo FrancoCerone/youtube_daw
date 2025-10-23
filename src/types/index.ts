@@ -23,6 +23,8 @@ export interface DawState {
   currentTime: number;
   duration: number;
   playheadPosition: number;
+  timelineZoom: number;
+  timelineScroll: number;
 }
 
 // Tipi per le azioni dello store
@@ -35,6 +37,9 @@ export interface DawActions {
   stop: () => void;
   setCurrentTime: (time: number) => void;
   setPlayheadPosition: (position: number) => void;
+  setTimelineZoom: (zoom: number) => void;
+  setTimelineScroll: (scroll: number) => void;
+  resetTimelineView: () => void;
   saveSession: () => void;
   loadSession: () => void;
 }

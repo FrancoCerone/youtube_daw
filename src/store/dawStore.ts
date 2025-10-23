@@ -14,6 +14,10 @@ const useDawStore = create<DawStore>((set, get) => ({
   currentTime: 0,
   duration: 120, // durata totale timeline in secondi
   playheadPosition: 0,
+  
+  // Stato zoom e scroll timeline
+  timelineZoom: 1, // fattore di zoom (1 = normale, >1 = zoom in, <1 = zoom out)
+  timelineScroll: 0, // posizione di scroll orizzontale in pixel
 
   // Azioni
   addClip: (trackId, clip) => set((state) => ({
@@ -55,12 +59,21 @@ const useDawStore = create<DawStore>((set, get) => ({
 
   setPlayheadPosition: (position: number) => set({ playheadPosition: position }),
 
+  // Azioni zoom e scroll timeline
+  setTimelineZoom: (zoom: number) => set({ timelineZoom: Math.max(0.1, Math.min(10, zoom)) }),
+  
+  setTimelineScroll: (scroll: number) => set({ timelineScroll: Math.max(0, scroll) }),
+  
+  resetTimelineView: () => set({ timelineZoom: 1, timelineScroll: 0 }),
+
   // Salva sessione in localStorage
   saveSession: () => {
     const state = get();
     localStorage.setItem('dawSession', JSON.stringify({
       tracks: state.tracks,
-      duration: state.duration
+      duration: state.duration,
+      timelineZoom: state.timelineZoom,
+      timelineScroll: state.timelineScroll
     }));
   },
 
@@ -68,8 +81,18 @@ const useDawStore = create<DawStore>((set, get) => ({
   loadSession: () => {
     const saved = localStorage.getItem('dawSession');
     if (saved) {
-      const { tracks, duration } = JSON.parse(saved) as { tracks: Track[]; duration: number };
-      set({ tracks, duration });
+      const { tracks, duration, timelineZoom, timelineScroll } = JSON.parse(saved) as { 
+        tracks: Track[]; 
+        duration: number;
+        timelineZoom?: number;
+        timelineScroll?: number;
+      };
+      set({ 
+        tracks, 
+        duration,
+        timelineZoom: timelineZoom || 1,
+        timelineScroll: timelineScroll || 0
+      });
     }
   }
 }));

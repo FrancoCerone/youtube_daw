@@ -5,6 +5,7 @@ import { X, Music } from 'lucide-react';
 import useDawStore from '../store/dawStore';
 import ClipInfo from './ClipInfo';
 import { Clip as ClipType } from '../types';
+import YouTube from 'react-youtube';
 
 // Funzione per estrarre l'ID YouTube dall'URL
 const getYouTubeId = (url: string): string | null => {
@@ -19,7 +20,7 @@ interface ClipProps {
 }
 
 const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
-  const { updateClip, removeClip, duration, isPlaying, currentTime } = useDawStore();
+  const { updateClip, removeClip, duration, isPlaying, currentTime, timelineZoom, timelineScroll } = useDawStore();
   const clipRef = useRef<HTMLDivElement>(null);
   const [showInfo, setShowInfo] = useState(false);
   const [isResizing, setIsResizing] = useState<'left' | 'right' | null>(null);
@@ -40,8 +41,11 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
   });
 
   const clipDuration = clip.endTime - clip.startTime;
-  const widthPercentage = (clipDuration / duration) * 100;
-  const leftPercentage = (clip.startTime / duration) * 100;
+  
+  // Calcola dimensioni e posizione con zoom
+  const totalWidth = duration * timelineZoom * 10; // 10px per secondo
+  const clipWidth = (clipDuration / duration) * totalWidth;
+  const clipLeft = (clip.startTime / duration) * totalWidth - timelineScroll;
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -76,12 +80,8 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!clipRef.current) return;
       
-      const container = clipRef.current.parentElement;
-      if (!container) return;
-
       const deltaX = e.clientX - resizeStartXRef.current;
-      const containerWidth = container.offsetWidth;
-      const deltaTime = (deltaX / containerWidth) * duration;
+      const deltaTime = deltaX / (timelineZoom * 10); // Converti pixel in tempo con zoom
 
       // Ridimensiona da destra - cambia solo endTime (durata)
       const newEndTime = Math.min(duration, Math.max(
@@ -102,7 +102,7 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, clip.id, trackId, duration, updateClip]);
+  }, [isResizing, clip.id, trackId, duration, timelineZoom, updateClip]);
 
   // Determina se questa clip dovrebbe essere in riproduzione
   const shouldPlay = isPlaying && currentTime >= clip.startTime && currentTime < clip.endTime;
@@ -134,8 +134,8 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
             : 'border-blue-500 hover:shadow-xl hover:border-blue-400 cursor-grab'
         }`}
         style={{
-          left: `${leftPercentage}%`,
-          width: `${widthPercentage}%`,
+          left: `${clipLeft}px`,
+          width: `${clipWidth}px`,
           minWidth: '120px',
         }}
       >
@@ -168,41 +168,64 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
           {clip.url ? (
             <div className="relative w-full h-full">
               {/* Layer 1: Preview sempre visibile (senza audio) */}
-              <iframe
-                key={`clip-${clip.id}-preview`}
-                src={`https://www.youtube.com/embed/${getYouTubeId(clip.url)}?controls=0&start=${Math.floor(clip.clipStart || 0)}&mute=1&autoplay=0`}
-                title={`${clip.title} - Preview`}
-                frameBorder="0"
-                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              <div
                 style={{
                   width: '100%',
                   height: '100%',
-                  border: 'none',
                   display: shouldBeActive ? 'none' : 'block',
                   opacity: 0.7,
-                  pointerEvents: 'none', // Disabilita eventi per permettere drag & drop
+                  pointerEvents: 'none',
                 }}
-              />
+              >
+                <YouTube
+                  key={`clip-${clip.id}-preview`}
+                  videoId={getYouTubeId(clip.url) || undefined}
+                  opts={{
+                    width: '100%',
+                    height: '100%',
+                    playerVars: {
+                      controls: 0,
+                      start: Math.floor(clip.clipStart || 0),
+                      mute: 1,
+                      autoplay: 0,
+                      modestbranding: 1,
+                      rel: 0,
+                      playsinline: 1,
+                    },
+                  }}
+                />
+              </div>
               
               {/* Layer 2: Player attivo (con audio) - si monta solo quando attivo */}
               {shouldBeActive && (
-                <iframe
-                  key={`clip-${clip.id}-active`}
-                  src={`https://www.youtube.com/embed/${getYouTubeId(clip.url)}?autoplay=1&controls=1&start=${Math.floor(clip.clipStart || 0)}&mute=0&enablejsapi=1`}
-                  title={clip.title}
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
+                <div
                   style={{
                     width: '100%',
                     height: '100%',
-                    border: 'none',
                     position: 'absolute',
                     top: 0,
                     left: 0,
-                    pointerEvents: isDragging ? 'none' : 'auto', // Disabilita durante il drag
+                    pointerEvents: isDragging ? 'none' : 'auto',
                   }}
-                />
+                >
+                  <YouTube
+                    key={`clip-${clip.id}-active`}
+                    videoId={getYouTubeId(clip.url) || undefined}
+                    opts={{
+                      width: '100%',
+                      height: '100%',
+                      playerVars: {
+                        autoplay: 1,
+                        controls: 1,
+                        start: Math.floor(clip.clipStart || 0),
+                        mute: 0,
+                        modestbranding: 1,
+                        rel: 0,
+                        playsinline: 1,
+                      },
+                    }}
+                  />
+                </div>
               )}
               
               {/* Overlay quando la clip non è attiva */}
