@@ -16,6 +16,8 @@ const ClipInfo: React.FC<ClipInfoProps> = ({ clip, onClose, onUpdate }) => {
   const [playbackSpeed, setPlaybackSpeed] = React.useState(clip.playbackSpeed ?? 1.0);
   const [fadeIn, setFadeIn] = React.useState(clip.fadeIn ?? 0);
   const [fadeOut, setFadeOut] = React.useState(clip.fadeOut ?? 0);
+  const [fadeInEnabled, setFadeInEnabled] = React.useState((clip.fadeIn ?? 0) > 0);
+  const [fadeOutEnabled, setFadeOutEnabled] = React.useState((clip.fadeOut ?? 0) > 0);
 
   // Funzione per aggiornare la clip con i valori correnti
   const updateClipNow = React.useCallback(() => {
@@ -25,10 +27,10 @@ const ClipInfo: React.FC<ClipInfoProps> = ({ clip, onClose, onUpdate }) => {
       clipEnd: endTime,
       endTime: clip.startTime + clipDuration, // Aggiorna la fine sulla timeline
       volume: volume,
-      fadeIn: fadeIn,
-      fadeOut: fadeOut,
+      fadeIn: fadeInEnabled ? fadeIn : 0,  // Solo se abilitato
+      fadeOut: fadeOutEnabled ? fadeOut : 0, // Solo se abilitato
     });
-  }, [startTime, endTime, volume, fadeIn, fadeOut, clip.startTime, onUpdate]);
+  }, [startTime, endTime, volume, fadeIn, fadeOut, fadeInEnabled, fadeOutEnabled, clip.startTime, onUpdate]);
 
   return (
     <AnimatePresence>
@@ -193,18 +195,38 @@ const ClipInfo: React.FC<ClipInfoProps> = ({ clip, onClose, onUpdate }) => {
 
             {/* Fade Controls */}
             <div className="grid grid-cols-2 gap-4">
+              {/* Fade In */}
               <div>
-                <label className="text-sm text-gray-400 mb-2 block flex items-center gap-2">
-                  <TrendingUp size={16} />
-                  Fade In ({fadeIn}s)
-                </label>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <input
+                    type="checkbox"
+                    id={`fadeInEnabled-${clip.id}`}
+                    checked={fadeInEnabled}
+                    onChange={(e) => {
+                      const enabled = e.target.checked;
+                      setFadeInEnabled(enabled);
+                      if (!enabled) {
+                        setFadeIn(0);
+                      } else if (fadeIn === 0) {
+                        setFadeIn(2); // Default 2 secondi
+                      }
+                      setTimeout(() => updateClipNow(), 10);
+                    }}
+                    className="w-4 h-4 text-orange-500 bg-gray-700 border-gray-600 rounded focus:ring-orange-500"
+                  />
+                  <label htmlFor={`fadeInEnabled-${clip.id}`} className="text-sm text-gray-400 flex items-center gap-2 cursor-pointer">
+                    <TrendingUp size={16} className={fadeInEnabled ? 'text-orange-500' : 'text-gray-500'} />
+                    Fade In {fadeInEnabled && `(${fadeIn.toFixed(1)}s)`}
+                  </label>
+                </div>
+                <div className={`flex items-center gap-2 ${!fadeInEnabled && 'opacity-30 pointer-events-none'}`}>
                   <input
                     type="range"
-                    min="0"
+                    min="0.1"
                     max="10"
                     step="0.1"
                     value={fadeIn}
+                    disabled={!fadeInEnabled}
                     onChange={(e) => {
                       const newFadeIn = parseFloat(e.target.value) || 0;
                       setFadeIn(newFadeIn);
@@ -218,18 +240,39 @@ const ClipInfo: React.FC<ClipInfoProps> = ({ clip, onClose, onUpdate }) => {
                   <span className="text-xs text-gray-400 w-8">{fadeIn.toFixed(1)}s</span>
                 </div>
               </div>
+              
+              {/* Fade Out */}
               <div>
-                <label className="text-sm text-gray-400 mb-2 block flex items-center gap-2">
-                  <TrendingDown size={16} />
-                  Fade Out ({fadeOut}s)
-                </label>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <input
+                    type="checkbox"
+                    id={`fadeOutEnabled-${clip.id}`}
+                    checked={fadeOutEnabled}
+                    onChange={(e) => {
+                      const enabled = e.target.checked;
+                      setFadeOutEnabled(enabled);
+                      if (!enabled) {
+                        setFadeOut(0);
+                      } else if (fadeOut === 0) {
+                        setFadeOut(3); // Default 3 secondi
+                      }
+                      setTimeout(() => updateClipNow(), 10);
+                    }}
+                    className="w-4 h-4 text-red-500 bg-gray-700 border-gray-600 rounded focus:ring-red-500"
+                  />
+                  <label htmlFor={`fadeOutEnabled-${clip.id}`} className="text-sm text-gray-400 flex items-center gap-2 cursor-pointer">
+                    <TrendingDown size={16} className={fadeOutEnabled ? 'text-red-500' : 'text-gray-500'} />
+                    Fade Out {fadeOutEnabled && `(${fadeOut.toFixed(1)}s)`}
+                  </label>
+                </div>
+                <div className={`flex items-center gap-2 ${!fadeOutEnabled && 'opacity-30 pointer-events-none'}`}>
                   <input
                     type="range"
-                    min="0"
+                    min="0.1"
                     max="10"
                     step="0.1"
                     value={fadeOut}
+                    disabled={!fadeOutEnabled}
                     onChange={(e) => {
                       const newFadeOut = parseFloat(e.target.value) || 0;
                       setFadeOut(newFadeOut);

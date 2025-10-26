@@ -350,6 +350,98 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
           )}
         </div>
         
+        {/* Visualizzazione grafica Fade In/Out */}
+        <svg 
+          className="absolute inset-0 pointer-events-none z-15" 
+          style={{ top: '24px' }}
+          preserveAspectRatio="none"
+        >
+          {/* Fade In - Rampa che sale da sinistra */}
+          {clip.fadeIn && clip.fadeIn > 0 && (
+            <g>
+              {/* Area del fade in con gradiente */}
+              <defs>
+                <linearGradient id={`fadeInGradient-${clip.id}`} x1="0%" y1="100%" x2="0%" y2="0%">
+                  <stop offset="0%" style={{ stopColor: '#f59e0b', stopOpacity: 0.3 }} />
+                  <stop offset="100%" style={{ stopColor: '#f59e0b', stopOpacity: 0.1 }} />
+                </linearGradient>
+              </defs>
+              
+              {/* Area riempita del fade in */}
+              <polygon
+                points={`0,100 ${(clip.fadeIn / clipDuration) * 100},0 ${(clip.fadeIn / clipDuration) * 100},100`}
+                fill={`url(#fadeInGradient-${clip.id})`}
+                vectorEffect="non-scaling-stroke"
+              />
+              
+              {/* Linea del fade in */}
+              <line
+                x1="0%"
+                y1="100%"
+                x2={`${(clip.fadeIn / clipDuration) * 100}%`}
+                y2="0%"
+                stroke="#f59e0b"
+                strokeWidth="2"
+                vectorEffect="non-scaling-stroke"
+              />
+              
+              {/* Etichetta Fade In */}
+              <text
+                x="2%"
+                y="95%"
+                fill="#f59e0b"
+                fontSize="10"
+                fontWeight="bold"
+              >
+                IN ↗
+              </text>
+            </g>
+          )}
+          
+          {/* Fade Out - Rampa che scende a destra */}
+          {clip.fadeOut && clip.fadeOut > 0 && (
+            <g>
+              {/* Area del fade out con gradiente */}
+              <defs>
+                <linearGradient id={`fadeOutGradient-${clip.id}`} x1="100%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style={{ stopColor: '#ef4444', stopOpacity: 0.1 }} />
+                  <stop offset="100%" style={{ stopColor: '#ef4444', stopOpacity: 0.3 }} />
+                </linearGradient>
+              </defs>
+              
+              {/* Area riempita del fade out */}
+              <polygon
+                points={`${100 - (clip.fadeOut / clipDuration) * 100},0 100,100 ${100 - (clip.fadeOut / clipDuration) * 100},100`}
+                fill={`url(#fadeOutGradient-${clip.id})`}
+                vectorEffect="non-scaling-stroke"
+              />
+              
+              {/* Linea del fade out */}
+              <line
+                x1={`${100 - (clip.fadeOut / clipDuration) * 100}%`}
+                y1="0%"
+                x2="100%"
+                y2="100%"
+                stroke="#ef4444"
+                strokeWidth="2"
+                vectorEffect="non-scaling-stroke"
+              />
+              
+              {/* Etichetta Fade Out */}
+              <text
+                x="96%"
+                y="95%"
+                fill="#ef4444"
+                fontSize="10"
+                fontWeight="bold"
+                textAnchor="end"
+              >
+                ↘ OUT
+              </text>
+            </g>
+          )}
+        </svg>
+
         {/* Debug info */}
         <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-1 z-20">
           URL: {clip.url ? '✓' : '✗'} | Active: {shouldBeActive ? 'YES' : 'NO'} | Time: {currentTime.toFixed(1)}s / Range: {clip.startTime}-{clip.endTime}
