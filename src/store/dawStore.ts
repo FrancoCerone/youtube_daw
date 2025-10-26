@@ -4,9 +4,9 @@ import { DawStore, Track } from '../types';
 const useDawStore = create<DawStore>((set, get) => ({
   // Stato delle tracce
   tracks: [
-    { id: 1, name: 'Track 1', clips: [] },
-    { id: 2, name: 'Track 2', clips: [] },
-    { id: 3, name: 'Track 3', clips: [] },
+    { id: 1, name: 'Track 1', clips: [], volume: 1.0 },
+    { id: 2, name: 'Track 2', clips: [], volume: 1.0 },
+    { id: 3, name: 'Track 3', clips: [], volume: 1.0 },
   ],
 
   // Stato del transport
@@ -45,6 +45,14 @@ const useDawStore = create<DawStore>((set, get) => ({
     tracks: state.tracks.map(track =>
       track.id === trackId
         ? { ...track, clips: track.clips.filter(clip => clip.id !== clipId) }
+        : track
+    )
+  })),
+
+  setTrackVolume: (trackId, volume) => set((state) => ({
+    tracks: state.tracks.map(track =>
+      track.id === trackId
+        ? { ...track, volume: Math.max(0, Math.min(1, volume)) }
         : track
     )
   })),

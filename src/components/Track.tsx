@@ -3,6 +3,7 @@ import { useDrop } from 'react-dnd';
 import { motion } from 'framer-motion';
 import { Youtube, Plus } from 'lucide-react';
 import Clip from './Clip';
+import VolumeSlider from './VolumeSlider';
 import useDawStore from '../store/dawStore';
 import { Track as TrackType } from '../types';
 
@@ -24,7 +25,7 @@ interface DropPreview {
 }
 
 const Track: React.FC<TrackProps> = ({ track }) => {
-  const { addClip, updateClip, removeClip, duration, currentTime, isPlaying, timelineZoom, timelineScroll } = useDawStore();
+  const { addClip, updateClip, removeClip, setTrackVolume, duration, currentTime, isPlaying, timelineZoom, timelineScroll } = useDawStore();
   const [showInput, setShowInput] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [clipSettings, setClipSettings] = useState({
@@ -137,8 +138,18 @@ const Track: React.FC<TrackProps> = ({ track }) => {
     <div className="border-b border-gray-800">
       <div className="flex">
         {/* Track header */}
-        <div className="w-48 bg-gray-900 border-r border-gray-800 p-4 flex flex-col gap-2">
+        <div className="w-48 bg-gray-900 border-r border-gray-800 p-4 flex flex-col gap-3">
           <h3 className="font-semibold text-sm">{track.name}</h3>
+          
+          {/* Volume Control */}
+          <div className="space-y-1">
+            <label className="text-xs text-gray-400">Volume</label>
+            <VolumeSlider
+              volume={track.volume}
+              onVolumeChange={(volume) => setTrackVolume(track.id, volume)}
+              trackName={track.name}
+            />
+          </div>
           
           <motion.button
             whileHover={{ scale: 1.02 }}

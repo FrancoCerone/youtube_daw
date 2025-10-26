@@ -1,7 +1,7 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useDrag } from 'react-dnd';
 import { motion } from 'framer-motion';
-import { X, Music } from 'lucide-react';
+import { X, Music, Settings } from 'lucide-react';
 import useDawStore from '../store/dawStore';
 import ClipInfo from './ClipInfo';
 import { Clip as ClipType } from '../types';
@@ -20,7 +20,7 @@ interface ClipProps {
 }
 
 const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
-  const { updateClip, removeClip, duration, isPlaying, currentTime, timelineZoom, timelineScroll } = useDawStore();
+  const { updateClip, removeClip, duration, isPlaying, currentTime, timelineZoom, timelineScroll, tracks } = useDawStore();
   const clipRef = useRef<HTMLDivElement>(null);
   const [showInfo, setShowInfo] = useState(false);
   const [isResizing, setIsResizing] = useState<'left' | 'right' | null>(null);
@@ -110,6 +110,64 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
   // Determina se il video dovrebbe essere visibile/audibile
   // Se il player globale è in play, tutti i video partono ma solo quello attivo ha audio
   const shouldBeActive = shouldPlay;
+  
+  // Ottieni il volume della traccia e della clip
+  const track = tracks.find(t => t.id === trackId);
+  const trackVolume = track?.volume || 1.0;
+  const clipVolume = clip.volume ?? 1.0; // Volume specifico della clip, default 1.0
+  
+  // Calcola il moltiplicatore del fade in/out basato sul tempo corrente
+  const calculateFadeMultiplier = (): number => {
+    if (!shouldBeActive) return 1.0; // Non in riproduzione, volume normale
+
+    const timeInClip = currentTime - clip.startTime;
+    const clipDuration = clip.endTime - clip.startTime;
+
+    let fadeMultiplier = 1.0;
+
+    // FADE IN - all'inizio della clip
+    if (clip.fadeIn && clip.fadeIn > 0 && timeInClip < clip.fadeIn) {
+      fadeMultiplier = Math.min(1.0, timeInClip / clip.fadeIn); // 0.0 → 1.0
+    }
+
+    // FADE OUT - alla fine della clip
+    if (clip.fadeOut && clip.fadeOut > 0) {
+      const fadeOutStartTime = clipDuration - clip.fadeOut;
+      if (timeInClip >= fadeOutStartTime) {
+        const fadeOutProgress = (timeInClip - fadeOutStartTime) / clip.fadeOut;
+        fadeMultiplier = Math.max(0.0, 1.0 - fadeOutProgress); // 1.0 → 0.0
+      }
+    }
+
+    return fadeMultiplier;
+  };
+
+  const fadeMultiplier = calculateFadeMultiplier();
+  const finalVolume = clipVolume * trackVolume * fadeMultiplier; // Volume finale = clip * traccia * fade
+  
+  // Riferimenti ai player YouTube per aggiornare il volume
+  const previewPlayerRef = useRef<any>(null);
+  const activePlayerRef = useRef<any>(null);
+  
+  // Aggiorna il volume quando cambia (traccia, clip o fade) - OGNI FRAME durante il fade
+  useEffect(() => {
+    if (!shouldBeActive) return; // Aggiorna solo quando la clip è attiva
+
+    const volumePercent = Math.round(finalVolume * 100);
+    
+    if (activePlayerRef.current && activePlayerRef.current.setVolume) {
+      try {
+        activePlayerRef.current.setVolume(volumePercent);
+        
+        // Log solo quando c'è fade attivo (per non intasare la console)
+        if (fadeMultiplier < 0.99) {
+          console.log('🔊 Fade active - Clip', clip.id, '- Volume:', volumePercent, '% (multiplier:', Math.round(fadeMultiplier * 100), '%)');
+        }
+      } catch (e) {
+        console.warn('Could not set volume:', e);
+      }
+    }
+  }, [finalVolume, fadeMultiplier, clip.id, shouldBeActive]);
 
   return (
     <>
@@ -148,19 +206,45 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
           <div className="absolute inset-y-0 right-0 w-1 bg-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
 
-        {/* Header con titolo e delete */}
+        {/* Header con titolo, edit e delete */}
         <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-purple-600 px-2 py-1 flex items-center justify-between z-10">
           <div className="flex items-center gap-1 flex-1 min-w-0">
             <Music size={10} className="flex-shrink-0" />
             <span className="text-xs font-medium truncate">{clip.title || 'Untitled'}</span>
+            {clip.volume !== undefined && clip.volume !== 1.0 && (
+              <span className="text-xs bg-white/20 px-1 rounded text-white">
+                {Math.round(clip.volume * 100)}%
+              </span>
+            )}
+            {(clip.fadeIn !== undefined && clip.fadeIn > 0) || (clip.fadeOut !== undefined && clip.fadeOut > 0) ? (
+              <span className="text-xs bg-orange-500/80 px-1 rounded text-white">
+                Fade
+              </span>
+            ) : null}
           </div>
           
-          <button
-            onClick={handleDelete}
-            className="flex-shrink-0 hover:bg-red-500 p-0.5 rounded transition-colors"
-          >
-            <X size={12} />
-          </button>
+          <div className="flex items-center gap-1">
+            {/* Edit Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowInfo(true);
+              }}
+              className="flex-shrink-0 hover:bg-blue-500 p-0.5 rounded transition-colors"
+              title="Modifica Clip"
+            >
+              <Settings size={12} />
+            </button>
+            
+            {/* Delete Button */}
+            <button
+              onClick={handleDelete}
+              className="flex-shrink-0 hover:bg-red-500 p-0.5 rounded transition-colors"
+              title="Elimina Clip"
+            >
+              <X size={12} />
+            </button>
+          </div>
         </div>
 
         {/* Video YouTube embedded diretto */}
@@ -193,6 +277,11 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
                       playsinline: 1,
                     },
                   }}
+                  onReady={(event) => {
+                    // Salva il riferimento al player e applica il volume
+                    previewPlayerRef.current = event.target;
+                    event.target.setVolume(finalVolume * 100);
+                  }}
                 />
               </div>
               
@@ -224,7 +313,24 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
                         playsinline: 1,
                       },
                     }}
+                    onReady={(event) => {
+                      // Salva il riferimento al player attivo e applica il volume CON fade
+                      activePlayerRef.current = event.target;
+                      const volumePercent = Math.round(finalVolume * 100);
+                      event.target.setVolume(volumePercent);
+                      event.target.unMute(); // Assicurati che non sia mutato
+                      console.log('🎬 YouTube player ready - Clip:', clip.id, '- Volume:', volumePercent, '% (Fade multiplier:', Math.round(fadeMultiplier * 100), '%)');
+                    }}
                   />
+                  
+                  {/* Indicatori Fade In/Out */}
+                  {fadeMultiplier < 1.0 && (
+                    <div className="absolute top-2 left-2 bg-purple-600/90 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 z-10 pointer-events-none">
+                      🔊 Vol: {Math.round(fadeMultiplier * 100)}%
+                      {clip.fadeIn && clip.fadeIn > 0 && (currentTime - clip.startTime) < clip.fadeIn && ' (Fade In)'}
+                      {clip.fadeOut && clip.fadeOut > 0 && (currentTime - clip.startTime) >= (clip.endTime - clip.startTime - clip.fadeOut) && ' (Fade Out)'}
+                    </div>
+                  )}
                 </div>
               )}
               

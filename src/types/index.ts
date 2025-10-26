@@ -7,6 +7,10 @@ export interface Clip {
   endTime: number;
   clipStart: number;
   clipEnd: number;
+  volume?: number; // Volume specifico della clip (0-1), se non impostato usa il volume della traccia
+  playbackSpeed?: number; // Velocità di riproduzione (0.5-2.0)
+  fadeIn?: number; // Fade in in secondi (0-10)
+  fadeOut?: number; // Fade out in secondi (0-10)
 }
 
 // Tipi per le tracce
@@ -14,6 +18,7 @@ export interface Track {
   id: number;
   name: string;
   clips: Clip[];
+  volume: number; // Volume della traccia (0-1)
 }
 
 // Tipi per lo stato del DAW
@@ -32,6 +37,7 @@ export interface DawActions {
   addClip: (trackId: number, clip: Omit<Clip, 'id'>) => void;
   updateClip: (trackId: number, clipId: number, updates: Partial<Clip>) => void;
   removeClip: (trackId: number, clipId: number) => void;
+  setTrackVolume: (trackId: number, volume: number) => void;
   play: () => void;
   pause: () => void;
   stop: () => void;
