@@ -30,6 +30,7 @@ export interface DawState {
   playheadPosition: number;
   timelineZoom: number;
   timelineScroll: number;
+  clipboardClip: Omit<Clip, 'id'> | null; // Clip copiata negli appunti
 }
 
 // Tipi per le azioni dello store
@@ -37,6 +38,9 @@ export interface DawActions {
   addClip: (trackId: number, clip: Omit<Clip, 'id'>) => void;
   updateClip: (trackId: number, clipId: number, updates: Partial<Clip>) => void;
   removeClip: (trackId: number, clipId: number) => void;
+  copyClip: (trackId: number, clipId: number) => void;
+  pasteClip: (trackId: number, position?: number) => void;
+  cutClip: (trackId: number, clipId: number, cutPosition: number) => void;
   setTrackVolume: (trackId: number, volume: number) => void;
   play: () => void;
   pause: () => void;

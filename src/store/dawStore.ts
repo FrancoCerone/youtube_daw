@@ -18,6 +18,9 @@ const useDawStore = create<DawStore>((set, get) => ({
   // Stato zoom e scroll timeline
   timelineZoom: 1, // fattore di zoom (1 = normale, >1 = zoom in, <1 = zoom out)
   timelineScroll: 0, // posizione di scroll orizzontale in pixel
+  
+  // Clipboard per copia/incolla
+  clipboardClip: null,
 
   // Azioni
   addClip: (trackId, clip) => set((state) => ({
@@ -48,6 +51,85 @@ const useDawStore = create<DawStore>((set, get) => ({
         : track
     )
   })),
+
+  // Copia clip negli appunti
+  copyClip: (trackId, clipId) => {
+    const state = get();
+    const track = state.tracks.find(t => t.id === trackId);
+    const clip = track?.clips.find(c => c.id === clipId);
+    
+    if (clip) {
+      const { id, ...clipWithoutId } = clip;
+      set({ clipboardClip: clipWithoutId });
+    }
+  },
+
+  // Incolla clip dalla clipboard
+  pasteClip: (trackId, position) => {
+    const state = get();
+    if (!state.clipboardClip) return;
+
+    const pastePosition = position ?? state.currentTime;
+    const clipDuration = state.clipboardClip.endTime - state.clipboardClip.startTime;
+
+    set((state) => ({
+      tracks: state.tracks.map(track =>
+        track.id === trackId
+          ? {
+              ...track,
+              clips: [
+                ...track.clips,
+                {
+                  ...state.clipboardClip!,
+                  id: Date.now(),
+                  startTime: pastePosition,
+                  endTime: pastePosition + clipDuration,
+                }
+              ]
+            }
+          : track
+      )
+    }));
+  },
+
+  // Taglia clip in due parti nel punto specificato
+  cutClip: (trackId, clipId, cutPosition) => set((state) => {
+    const track = state.tracks.find(t => t.id === trackId);
+    const clip = track?.clips.find(c => c.id === clipId);
+    
+    if (!clip) return state;
+
+    // Calcola il tempo relativo nella clip
+    const timeInClip = cutPosition - clip.startTime;
+    const videoTimeAtCut = clip.clipStart + timeInClip;
+
+    // Clip 1: dalla partenza al punto di taglio
+    const clip1 = {
+      ...clip,
+      id: clip.id,
+      endTime: cutPosition,
+      clipEnd: videoTimeAtCut,
+    };
+
+    // Clip 2: dal punto di taglio alla fine
+    const clip2 = {
+      ...clip,
+      id: Date.now(),
+      startTime: cutPosition,
+      clipStart: videoTimeAtCut,
+    };
+
+    return {
+      tracks: state.tracks.map(track =>
+        track.id === trackId
+          ? {
+              ...track,
+              clips: track.clips.map(c => c.id === clipId ? clip1 : c).concat([clip2])
+            }
+          : track
+      )
+    };
+  }),
 
   setTrackVolume: (trackId, volume) => set((state) => ({
     tracks: state.tracks.map(track =>

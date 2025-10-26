@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useDrag } from 'react-dnd';
-import { motion } from 'framer-motion';
-import { X, Music, Settings } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Music, Settings, Copy, Clipboard, Trash2, Scissors } from 'lucide-react';
 import useDawStore from '../store/dawStore';
 import ClipInfo from './ClipInfo';
 import { Clip as ClipType } from '../types';
@@ -20,12 +20,13 @@ interface ClipProps {
 }
 
 const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
-  const { updateClip, removeClip, duration, isPlaying, currentTime, timelineZoom, timelineScroll, tracks } = useDawStore();
+  const { updateClip, removeClip, copyClip, pasteClip, cutClip, clipboardClip, duration, isPlaying, currentTime, timelineZoom, timelineScroll, tracks } = useDawStore();
   const clipRef = useRef<HTMLDivElement>(null);
   const [showInfo, setShowInfo] = useState(false);
   const [isResizing, setIsResizing] = useState<'left' | 'right' | null>(null);
   const resizeStartXRef = useRef<number>(0);
   const resizeStartValuesRef = useRef({ startTime: 0, endTime: 0 });
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; cutPosition: number } | null>(null);
 
   const [{ isDragging }, drag] = useDrag({
     type: 'CLIP',
@@ -59,6 +60,57 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
   const handleUpdateClip = (updates: Partial<ClipType>) => {
     updateClip(trackId, clip.id, updates);
   };
+
+  // Gestione menu contestuale
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Calcola la posizione del taglio basata su dove hai cliccato
+    const rect = clipRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    
+    const clickX = e.clientX - rect.left;
+    const clickPercentage = clickX / rect.width;
+    const cutPosition = clip.startTime + (clipDuration * clickPercentage);
+    
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      cutPosition: cutPosition,
+    });
+  };
+
+  const handleCopy = () => {
+    copyClip(trackId, clip.id);
+    setContextMenu(null);
+  };
+
+  const handlePaste = () => {
+    pasteClip(trackId, clip.startTime);
+    setContextMenu(null);
+  };
+
+  const handleCut = () => {
+    if (contextMenu) {
+      cutClip(trackId, clip.id, contextMenu.cutPosition);
+      setContextMenu(null);
+    }
+  };
+
+  const handleDeleteFromMenu = () => {
+    removeClip(trackId, clip.id);
+    setContextMenu(null);
+  };
+
+  // Chiudi menu contestuale quando si clicca fuori
+  useEffect(() => {
+    const handleClickOutside = () => setContextMenu(null);
+    if (contextMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [contextMenu]);
 
   // Gestione resize - inizio
   const handleResizeStart = (e: React.MouseEvent, side: 'left' | 'right') => {
@@ -184,6 +236,7 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
         exit={{ opacity: 0, scale: 0.8 }}
         transition={{ duration: 0.2 }}
         onDoubleClick={handleDoubleClick}
+        onContextMenu={handleContextMenu}
         className={`absolute top-2 bottom-2 bg-gray-900 border-2 rounded-lg shadow-lg overflow-hidden transition-all ${
           isDragging 
             ? 'border-yellow-400 shadow-2xl cursor-grabbing'
@@ -466,6 +519,79 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
           onUpdate={handleUpdateClip}
         />
       )}
+
+      {/* Context Menu */}
+      <AnimatePresence>
+        {contextMenu && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.1 }}
+            className="fixed bg-gray-800 border border-gray-700 rounded-lg shadow-2xl overflow-hidden z-[100]"
+            style={{
+              left: contextMenu.x,
+              top: contextMenu.y,
+              minWidth: '200px',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Menu Items */}
+            <div className="py-1">
+              {/* Copy */}
+              <button
+                onClick={handleCopy}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-700 flex items-center gap-3 transition-colors"
+              >
+                <Copy size={16} className="text-blue-400" />
+                <span>Copia</span>
+                <span className="ml-auto text-xs text-gray-500">Ctrl+C</span>
+              </button>
+
+              {/* Paste */}
+              <button
+                onClick={handlePaste}
+                disabled={!clipboardClip}
+                className={`w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors ${
+                  clipboardClip ? 'hover:bg-gray-700' : 'opacity-50 cursor-not-allowed'
+                }`}
+              >
+                <Clipboard size={16} className="text-green-400" />
+                <span>Incolla</span>
+                <span className="ml-auto text-xs text-gray-500">Ctrl+V</span>
+              </button>
+
+              <div className="h-px bg-gray-700 my-1" />
+
+              {/* Cut */}
+              <button
+                onClick={handleCut}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-700 flex items-center gap-3 transition-colors"
+              >
+                <Scissors size={16} className="text-purple-400" />
+                <div className="flex-1">
+                  <div>Taglia qui</div>
+                  <div className="text-xs text-gray-500">
+                    @ {contextMenu.cutPosition.toFixed(2)}s
+                  </div>
+                </div>
+              </button>
+
+              <div className="h-px bg-gray-700 my-1" />
+
+              {/* Delete */}
+              <button
+                onClick={handleDeleteFromMenu}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-red-900/50 flex items-center gap-3 transition-colors text-red-400"
+              >
+                <Trash2 size={16} />
+                <span>Elimina</span>
+                <span className="ml-auto text-xs text-gray-500">Del</span>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 };
