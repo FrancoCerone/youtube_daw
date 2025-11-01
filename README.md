@@ -98,6 +98,35 @@ npm run build
 
 I file ottimizzati saranno generati nella cartella `dist/`.
 
+## 🚀 Deploy su GitHub Pages
+
+### Metodo Automatico (Consigliato):
+
+1. **Pusha il codice su GitHub:**
+   ```bash
+   git add .
+   git commit -m "Initial commit"
+   git push -u origin main
+   ```
+
+2. **Abilita GitHub Pages:**
+   - Vai su Settings → Pages
+   - Source: **GitHub Actions**
+   - Il deploy parte automaticamente!
+
+3. **App online** dopo 1-2 minuti a:
+   ```
+   https://TUO_USERNAME.github.io/youtube_daw/
+   ```
+
+### Metodo Manuale:
+
+```bash
+npm run deploy
+```
+
+📚 **Guida completa:** Vedi [DEPLOY.md](DEPLOY.md) o [DEPLOY_QUICK_START.md](DEPLOY_QUICK_START.md)
+
 ## 📝 Note Tecniche
 
 - Le clip audio vengono estratte da YouTube tramite `react-player`
