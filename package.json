@@ -12,6 +12,9 @@
     "preview": "vite preview",
     "deploy": "vite build && gh-pages -d dist"
   },
+  "export default": {
+    "base": "/youtube_daw/"
+  },
   "dependencies": {
     "autoprefixer": "^10.4.21",
     "framer-motion": "^12.23.24",
