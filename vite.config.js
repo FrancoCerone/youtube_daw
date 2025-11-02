@@ -4,13 +4,8 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: 'https://github.com/FrancoCerone/youtube_daw',
+  base: '/youtube_daw',
   server: {
-    port: 5173,
-    open: true,
-  },
-  build: {
-    outDir: 'dist',
-    sourcemap: false,
+    port: 3000,
   },
 })
