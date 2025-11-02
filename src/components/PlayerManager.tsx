@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, {useEffect, useRef} from 'react';
 import useDawStore from '../store/dawStore';
-import { Clip } from '../types';
+import {Clip} from '../types';
 
 const PlayerManager: React.FC = () => {
   const storeState = useDawStore();
@@ -9,6 +9,7 @@ const PlayerManager: React.FC = () => {
   const audioBuffersRef = useRef<Record<number, AudioBuffer>>({});
   const audioSourcesRef = useRef<Record<number, AudioBufferSourceNode>>({});
   const animationFrameRef = useRef<number | null>(null);
+  const intervalRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const playStartTimeRef = useRef<number>(0);
   const lastCurrentTimeRef = useRef<number>(0);
@@ -78,7 +79,7 @@ const PlayerManager: React.FC = () => {
       
       console.log('Starting playback. currentTime:', currentTime);
       
-      // Aggiorna il tempo corrente con animazione fluida usando performance.now()
+      // Aggiorna il tempo corrente - usa setInterval invece di requestAnimationFrame per funzionare anche in tab inattive
       const updateTime = () => {
         // Ottieni lo stato fresco
         const state = useDawStore.getState();
@@ -117,11 +118,14 @@ const PlayerManager: React.FC = () => {
         
         lastCurrentTimeRef.current = elapsed;
         setCurrentTime(elapsed);
-        animationFrameRef.current = requestAnimationFrame(updateTime);
       };
       
       console.log('Starting updateTime loop. isLooping:', storeState.isLooping, 'Range:', storeState.loopStart, '-', storeState.loopEnd);
-      updateTime();
+      
+      // Usa setInterval invece di requestAnimationFrame per funzionare anche in tab inattive
+      // 60 FPS = ~16ms, ma usiamo 20ms per essere più leggeri
+      intervalRef.current = window.setInterval(updateTime, 20);
+      animationFrameRef.current = requestAnimationFrame(updateTime);
       
     } else {
       // Ferma l'aggiornamento del tempo
@@ -130,11 +134,20 @@ const PlayerManager: React.FC = () => {
         cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = null;
       }
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     }
     
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
