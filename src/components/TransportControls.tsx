@@ -1,10 +1,10 @@
 import React from 'react';
-import { Play, Pause, Square, RotateCcw, Save, FolderOpen } from 'lucide-react';
+import { Play, Pause, Square, RotateCcw, Save, FolderOpen, Repeat } from 'lucide-react';
 import { motion } from 'framer-motion';
 import useDawStore from '../store/dawStore';
 
 const TransportControls: React.FC = () => {
-  const { isPlaying, currentTime, play, pause, stop, saveSession, loadSession } = useDawStore();
+  const { isPlaying, isLooping, currentTime, play, pause, stop, toggleLoop, saveSession, loadSession } = useDawStore();
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -41,6 +41,23 @@ const TransportControls: React.FC = () => {
             className="bg-gray-700 hover:bg-gray-600 text-white p-3 rounded-lg transition-colors"
           >
             <RotateCcw size={20} />
+          </motion.button>
+
+          <div className="h-8 w-px bg-gray-700 mx-1" />
+
+          {/* Loop Button */}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={toggleLoop}
+            className={`p-3 rounded-lg transition-colors ${
+              isLooping 
+                ? 'bg-orange-600 hover:bg-orange-700' 
+                : 'bg-gray-700 hover:bg-gray-600'
+            } text-white`}
+            title={isLooping ? 'Loop Attivo' : 'Attiva Loop'}
+          >
+            <Repeat size={20} />
           </motion.button>
         </div>
 

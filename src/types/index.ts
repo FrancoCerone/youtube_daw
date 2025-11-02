@@ -31,6 +31,10 @@ export interface DawState {
   timelineZoom: number;
   timelineScroll: number;
   clipboardClip: Omit<Clip, 'id'> | null; // Clip copiata negli appunti
+  isLooping: boolean;
+  loopStart: number;
+  loopEnd: number;
+  loopRestartCount: number; // Incrementa ogni volta che il loop riparte
 }
 
 // Tipi per le azioni dello store
@@ -41,6 +45,8 @@ export interface DawActions {
   copyClip: (trackId: number, clipId: number) => void;
   pasteClip: (trackId: number, position?: number) => void;
   cutClip: (trackId: number, clipId: number, cutPosition: number) => void;
+  addTrack: (name: string) => void;
+  removeTrack: (trackId: number) => void;
   setTrackVolume: (trackId: number, volume: number) => void;
   play: () => void;
   pause: () => void;
@@ -50,6 +56,9 @@ export interface DawActions {
   setTimelineZoom: (zoom: number) => void;
   setTimelineScroll: (scroll: number) => void;
   resetTimelineView: () => void;
+  toggleLoop: () => void;
+  setLoopStart: (time: number) => void;
+  setLoopEnd: (time: number) => void;
   saveSession: () => void;
   loadSession: () => void;
 }

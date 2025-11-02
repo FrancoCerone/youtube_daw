@@ -6,16 +6,22 @@ const Timeline: React.FC = () => {
   const { 
     duration, 
     currentTime, 
-    isPlaying, 
+    isPlaying,
+    isLooping,
+    loopStart,
+    loopEnd,
     timelineZoom, 
     timelineScroll,
     setTimelineZoom, 
-    setTimelineScroll, 
+    setTimelineScroll,
+    setLoopStart,
+    setLoopEnd,
     resetTimelineView 
   } = useDawStore();
   const timelineRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, scroll: 0 });
+  const [draggingLoopMarker, setDraggingLoopMarker] = useState<'start' | 'end' | null>(null);
 
   // Genera i marker temporali con zoom
   const markers: number[] = [];
@@ -70,6 +76,42 @@ const Timeline: React.FC = () => {
       };
     }
   }, [isDragging, dragStart]);
+
+  // Gestione drag dei marker loop
+  const handleLoopMarkerMouseDown = (e: React.MouseEvent, marker: 'start' | 'end') => {
+    e.stopPropagation();
+    setDraggingLoopMarker(marker);
+  };
+
+  useEffect(() => {
+    if (!draggingLoopMarker) return;
+
+    const handleLoopMouseMove = (e: MouseEvent) => {
+      if (!timelineRef.current) return;
+
+      const rect = timelineRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left + timelineScroll;
+      const time = (x / totalWidth) * duration;
+
+      if (draggingLoopMarker === 'start') {
+        setLoopStart(time);
+      } else {
+        setLoopEnd(time);
+      }
+    };
+
+    const handleLoopMouseUp = () => {
+      setDraggingLoopMarker(null);
+    };
+
+    document.addEventListener('mousemove', handleLoopMouseMove);
+    document.addEventListener('mouseup', handleLoopMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleLoopMouseMove);
+      document.removeEventListener('mouseup', handleLoopMouseUp);
+    };
+  }, [draggingLoopMarker, duration, timelineScroll, setLoopStart, setLoopEnd]);
 
   // Calcola la larghezza totale della timeline con zoom
   const totalWidth = duration * timelineZoom * 10; // 10px per secondo
@@ -133,6 +175,47 @@ const Timeline: React.FC = () => {
             </div>
           ))}
         </div>
+
+        {/* Loop Region - Area evidenziata */}
+        {isLooping && (
+          <div
+            className="absolute top-0 bottom-0 bg-orange-500/20 border-l-2 border-r-2 border-orange-500 pointer-events-none z-5"
+            style={{
+              left: `${(loopStart / duration) * totalWidth - timelineScroll}px`,
+              width: `${((loopEnd - loopStart) / duration) * totalWidth}px`,
+            }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-b from-orange-500/10 to-transparent" />
+          </div>
+        )}
+
+        {/* Loop Marker - Start */}
+        {isLooping && (
+          <div
+            className="absolute top-0 bottom-0 w-1 bg-orange-500 z-20 cursor-ew-resize hover:w-2 transition-all"
+            style={{ left: `${(loopStart / duration) * totalWidth - timelineScroll}px` }}
+            onMouseDown={(e) => handleLoopMarkerMouseDown(e, 'start')}
+          >
+            <div className="absolute -top-1 left-1/2 -translate-x-1/2 bg-orange-500 text-white text-xs px-2 py-0.5 rounded shadow-lg whitespace-nowrap pointer-events-none">
+              ↻ {formatTime(loopStart)}
+            </div>
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 w-3 h-3 bg-orange-500 rounded-full shadow-lg pointer-events-none" />
+          </div>
+        )}
+
+        {/* Loop Marker - End */}
+        {isLooping && (
+          <div
+            className="absolute top-0 bottom-0 w-1 bg-orange-500 z-20 cursor-ew-resize hover:w-2 transition-all"
+            style={{ left: `${(loopEnd / duration) * totalWidth - timelineScroll}px` }}
+            onMouseDown={(e) => handleLoopMarkerMouseDown(e, 'end')}
+          >
+            <div className="absolute -top-1 left-1/2 -translate-x-1/2 bg-orange-500 text-white text-xs px-2 py-0.5 rounded shadow-lg whitespace-nowrap pointer-events-none">
+              {formatTime(loopEnd)} ↻
+            </div>
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 w-3 h-3 bg-orange-500 rounded-full shadow-lg pointer-events-none" />
+          </div>
+        )}
 
         {/* Playhead - cursore di riproduzione */}
         <div

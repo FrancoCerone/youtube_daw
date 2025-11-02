@@ -21,6 +21,12 @@ const useDawStore = create<DawStore>((set, get) => ({
   
   // Clipboard per copia/incolla
   clipboardClip: null,
+  
+  // Loop
+  isLooping: false,
+  loopStart: 0,
+  loopEnd: 30,
+  loopRestartCount: 0,
 
   // Azioni
   addClip: (trackId, clip) => set((state) => ({
@@ -155,6 +161,17 @@ const useDawStore = create<DawStore>((set, get) => ({
   setTimelineScroll: (scroll: number) => set({ timelineScroll: Math.max(0, scroll) }),
   
   resetTimelineView: () => set({ timelineZoom: 1, timelineScroll: 0 }),
+
+  // Azioni Loop
+  toggleLoop: () => set((state) => ({ isLooping: !state.isLooping })),
+  
+  setLoopStart: (time: number) => set((state) => ({ 
+    loopStart: Math.max(0, Math.min(time, state.loopEnd - 1))
+  })),
+  
+  setLoopEnd: (time: number) => set((state) => ({ 
+    loopEnd: Math.min(state.duration, Math.max(time, state.loopStart + 1))
+  })),
 
   // Salva sessione in localStorage
   saveSession: () => {

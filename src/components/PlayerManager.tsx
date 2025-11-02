@@ -3,7 +3,8 @@ import useDawStore from '../store/dawStore';
 import { Clip } from '../types';
 
 const PlayerManager: React.FC = () => {
-  const { tracks, isPlaying, currentTime, setCurrentTime } = useDawStore();
+  const storeState = useDawStore();
+  const { tracks, isPlaying, currentTime, setCurrentTime } = storeState;
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioBuffersRef = useRef<Record<number, AudioBuffer>>({});
   const audioSourcesRef = useRef<Record<number, AudioBufferSourceNode>>({});
@@ -78,10 +79,30 @@ const PlayerManager: React.FC = () => {
       
       // Aggiorna il tempo corrente con animazione fluida usando performance.now()
       const updateTime = () => {
-        const elapsed = performance.now() / 1000 - playStartTimeRef.current;
+        let elapsed = performance.now() / 1000 - playStartTimeRef.current;
+        
+        // Ottieni i valori freschi del loop dallo store
+        const state = useDawStore.getState();
+        const { isLooping: loopActive, loopStart: loopStartTime, loopEnd: loopEndTime } = state;
+        
+        // Gestione loop - controlla se dobbiamo tornare all'inizio
+        if (loopActive && elapsed >= loopEndTime) {
+          // Torna all'inizio del loop
+          playStartTimeRef.current = performance.now() / 1000 - loopStartTime;
+          elapsed = loopStartTime;
+          
+          // Incrementa il counter per notificare i componenti del loop restart
+          const currentState = useDawStore.getState();
+          useDawStore.setState({ loopRestartCount: currentState.loopRestartCount + 1 });
+          
+          console.log('🔁 Loop restart! Jumping from', loopEndTime.toFixed(2), 's back to', loopStartTime.toFixed(2), 's');
+        }
+        
         setCurrentTime(elapsed);
         animationFrameRef.current = requestAnimationFrame(updateTime);
       };
+      
+      console.log('Starting updateTime loop. isLooping:', storeState.isLooping, 'Range:', storeState.loopStart, '-', storeState.loopEnd);
       updateTime();
       
     } else {
@@ -113,6 +134,14 @@ const PlayerManager: React.FC = () => {
       </div>
       <div className="text-gray-400">
         🎵 Clips: {tracks.reduce((count, t) => count + t.clips.length, 0)}
+      </div>
+      {storeState.isLooping && (
+        <div className="text-orange-400 mt-1 text-xs font-semibold">
+          🔁 Loop: {storeState.loopStart.toFixed(1)}s → {storeState.loopEnd.toFixed(1)}s
+        </div>
+      )}
+      <div className="text-xs text-gray-500 mt-1">
+        Loop: {storeState.isLooping ? '✅ ON' : '⭕ OFF'}
       </div>
     </div>
   );

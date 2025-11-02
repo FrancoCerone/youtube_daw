@@ -20,7 +20,7 @@ interface ClipProps {
 }
 
 const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
-  const { updateClip, removeClip, copyClip, pasteClip, cutClip, clipboardClip, duration, isPlaying, currentTime, timelineZoom, timelineScroll, tracks } = useDawStore();
+  const { updateClip, removeClip, copyClip, pasteClip, cutClip, clipboardClip, duration, isPlaying, currentTime, loopRestartCount, timelineZoom, timelineScroll, tracks } = useDawStore();
   const clipRef = useRef<HTMLDivElement>(null);
   const [showInfo, setShowInfo] = useState(false);
   const [isResizing, setIsResizing] = useState<'left' | 'right' | null>(null);
@@ -201,6 +201,24 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
   const previewPlayerRef = useRef<any>(null);
   const activePlayerRef = useRef<any>(null);
   
+  // Rileva loop restart e riavvia i video
+  useEffect(() => {
+    if (!shouldBeActive || loopRestartCount === 0) return;
+
+    // C'è stato un loop restart, riavvia il video YouTube
+    if (activePlayerRef.current && activePlayerRef.current.seekTo) {
+      try {
+        const timeInClip = currentTime - clip.startTime;
+        const videoTime = (clip.clipStart || 0) + timeInClip;
+        
+        activePlayerRef.current.seekTo(videoTime, true);
+        console.log('🔄 Resyncing YouTube player after loop restart - Clip:', clip.id, 'VideoTime:', videoTime.toFixed(2), 's');
+      } catch (e) {
+        console.warn('Could not resync player:', e);
+      }
+    }
+  }, [loopRestartCount, shouldBeActive]);
+
   // Aggiorna il volume quando cambia (traccia, clip o fade) - OGNI FRAME durante il fade
   useEffect(() => {
     if (!shouldBeActive) return; // Aggiorna solo quando la clip è attiva

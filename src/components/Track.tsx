@@ -25,7 +25,7 @@ interface DropPreview {
 }
 
 const Track: React.FC<TrackProps> = ({ track }) => {
-  const { addClip, updateClip, removeClip, setTrackVolume, duration, currentTime, isPlaying, timelineZoom, timelineScroll } = useDawStore();
+  const { addClip, updateClip, removeClip, setTrackVolume, duration, currentTime, isPlaying, isLooping, loopStart, loopEnd, setLoopStart, setLoopEnd, timelineZoom, timelineScroll } = useDawStore();
   const [showInput, setShowInput] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [clipSettings, setClipSettings] = useState({
@@ -33,6 +33,7 @@ const Track: React.FC<TrackProps> = ({ track }) => {
     endTime: 30,
   });
   const [dropPreview, setDropPreview] = useState<DropPreview | null>(null);
+  const [draggingLoopMarker, setDraggingLoopMarker] = useState<'start' | 'end' | null>(null);
 
   const [{ isOver, canDrop }, drop] = useDrop<DragItem, void, { isOver: boolean; canDrop: boolean }>({
     accept: 'CLIP',
@@ -133,6 +134,46 @@ const Track: React.FC<TrackProps> = ({ track }) => {
       setClipSettings({ startTime: 0, endTime: 30 });
     }
   };
+
+  // Gestione drag dei marker loop sulle tracce
+  const handleLoopMarkerMouseDown = (e: React.MouseEvent, marker: 'start' | 'end') => {
+    e.stopPropagation();
+    setDraggingLoopMarker(marker);
+  };
+
+  React.useEffect(() => {
+    if (!draggingLoopMarker) return;
+
+    const handleLoopMouseMove = (e: MouseEvent) => {
+      const container = document.getElementById(`track-${track.id}`);
+      if (!container) return;
+
+      const rect = container.getBoundingClientRect();
+      const x = e.clientX - rect.left + timelineScroll;
+      const totalWidth = duration * timelineZoom * 10;
+      const time = (x / totalWidth) * duration;
+
+      if (draggingLoopMarker === 'start') {
+        setLoopStart(time);
+      } else {
+        setLoopEnd(time);
+      }
+    };
+
+    const handleLoopMouseUp = () => {
+      setDraggingLoopMarker(null);
+    };
+
+    document.addEventListener('mousemove', handleLoopMouseMove);
+    document.addEventListener('mouseup', handleLoopMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleLoopMouseMove);
+      document.removeEventListener('mouseup', handleLoopMouseUp);
+    };
+  }, [draggingLoopMarker, track.id, duration, timelineZoom, timelineScroll, setLoopStart, setLoopEnd]);
+
+  const totalWidth = duration * timelineZoom * 10;
 
   return (
     <div className="border-b border-gray-800">
@@ -237,6 +278,47 @@ const Track: React.FC<TrackProps> = ({ track }) => {
           {track.clips.map((clip) => (
             <Clip key={clip.id} clip={clip} trackId={track.id} />
           ))}
+
+          {/* Loop Region - Area evidenziata */}
+          {isLooping && (
+            <div
+              className="absolute top-0 bottom-0 bg-orange-500/15 border-l-2 border-r-2 border-orange-500 pointer-events-none z-15"
+              style={{
+                left: `${(loopStart / duration) * totalWidth - timelineScroll}px`,
+                width: `${((loopEnd - loopStart) / duration) * totalWidth}px`,
+              }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-orange-500/10 to-transparent" />
+            </div>
+          )}
+
+          {/* Loop Marker - Start */}
+          {isLooping && (
+            <div
+              className="absolute top-0 bottom-0 w-1 bg-orange-500 z-25 cursor-ew-resize hover:w-2 transition-all group"
+              style={{ left: `${(loopStart / duration) * totalWidth - timelineScroll}px` }}
+              onMouseDown={(e) => handleLoopMarkerMouseDown(e, 'start')}
+            >
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-orange-500 rounded-full shadow-lg border-2 border-white group-hover:w-4 group-hover:h-4 transition-all" />
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full mb-1 bg-orange-500 text-white text-xs px-2 py-0.5 rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+                ↻ Loop Start
+              </div>
+            </div>
+          )}
+
+          {/* Loop Marker - End */}
+          {isLooping && (
+            <div
+              className="absolute top-0 bottom-0 w-1 bg-orange-500 z-25 cursor-ew-resize hover:w-2 transition-all group"
+              style={{ left: `${(loopEnd / duration) * totalWidth - timelineScroll}px` }}
+              onMouseDown={(e) => handleLoopMarkerMouseDown(e, 'end')}
+            >
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-orange-500 rounded-full shadow-lg border-2 border-white group-hover:w-4 group-hover:h-4 transition-all" />
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full mb-1 bg-orange-500 text-white text-xs px-2 py-0.5 rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+                Loop End ↻
+              </div>
+            </div>
+          )}
 
           {/* Playhead - cursore di riproduzione sulla traccia */}
           <div
