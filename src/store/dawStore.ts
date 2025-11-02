@@ -27,6 +27,7 @@ const useDawStore = create<DawStore>((set, get) => ({
   loopStart: 0,
   loopEnd: 30,
   loopRestartCount: 0,
+  manualSeekCount: 0,
 
   // Azioni
   addClip: (trackId, clip) => set((state) => ({
@@ -143,6 +144,17 @@ const useDawStore = create<DawStore>((set, get) => ({
         ? { ...track, volume: Math.max(0, Math.min(1, volume)) }
         : track
     )
+  })),
+
+  addTrack: (name: string) => set((state) => {
+    const newId = Math.max(...state.tracks.map(t => t.id), 0) + 1;
+    return {
+      tracks: [...state.tracks, { id: newId, name, clips: [], volume: 1.0 }]
+    };
+  }),
+
+  removeTrack: (trackId: number) => set((state) => ({
+    tracks: state.tracks.filter(track => track.id !== trackId)
   })),
 
   play: () => set({ isPlaying: true }),

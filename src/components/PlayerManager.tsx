@@ -11,6 +11,7 @@ const PlayerManager: React.FC = () => {
   const animationFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const playStartTimeRef = useRef<number>(0);
+  const lastCurrentTimeRef = useRef<number>(0);
 
   // Inizializza AudioContext
   useEffect(() => {
@@ -79,10 +80,26 @@ const PlayerManager: React.FC = () => {
       
       // Aggiorna il tempo corrente con animazione fluida usando performance.now()
       const updateTime = () => {
+        // Ottieni lo stato fresco
+        const state = useDawStore.getState();
+        const freshCurrentTime = state.currentTime;
+        
+        // Rileva se c'è stato un seek manuale (drag del playhead)
+        const timeDiff = Math.abs(freshCurrentTime - lastCurrentTimeRef.current);
+        if (timeDiff > 1 && lastCurrentTimeRef.current !== 0) {
+          // Seek manuale rilevato, aggiorna il reference point
+          playStartTimeRef.current = performance.now() / 1000 - freshCurrentTime;
+          
+          // Incrementa il counter per notificare i componenti del seek manuale
+          const currentState = useDawStore.getState();
+          useDawStore.setState({ manualSeekCount: currentState.manualSeekCount + 1 });
+          
+          console.log('↔️ Manual seek detected, resyncing to:', freshCurrentTime.toFixed(2), 's');
+        }
+        
         let elapsed = performance.now() / 1000 - playStartTimeRef.current;
         
         // Ottieni i valori freschi del loop dallo store
-        const state = useDawStore.getState();
         const { isLooping: loopActive, loopStart: loopStartTime, loopEnd: loopEndTime } = state;
         
         // Gestione loop - controlla se dobbiamo tornare all'inizio
@@ -98,6 +115,7 @@ const PlayerManager: React.FC = () => {
           console.log('🔁 Loop restart! Jumping from', loopEndTime.toFixed(2), 's back to', loopStartTime.toFixed(2), 's');
         }
         
+        lastCurrentTimeRef.current = elapsed;
         setCurrentTime(elapsed);
         animationFrameRef.current = requestAnimationFrame(updateTime);
       };

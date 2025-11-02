@@ -12,6 +12,7 @@ const Timeline: React.FC = () => {
     loopEnd,
     timelineZoom, 
     timelineScroll,
+    setCurrentTime,
     setTimelineZoom, 
     setTimelineScroll,
     setLoopStart,
@@ -22,6 +23,7 @@ const Timeline: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, scroll: 0 });
   const [draggingLoopMarker, setDraggingLoopMarker] = useState<'start' | 'end' | null>(null);
+  const [draggingPlayhead, setDraggingPlayhead] = useState(false);
 
   // Genera i marker temporali con zoom
   const markers: number[] = [];
@@ -30,6 +32,9 @@ const Timeline: React.FC = () => {
   for (let i = 0; i <= duration; i += interval) {
     markers.push(i);
   }
+
+  // Calcola la larghezza totale della timeline con zoom (deve essere prima degli altri handler)
+  const totalWidth = duration * timelineZoom * 10; // 10px per secondo
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -53,6 +58,52 @@ const Timeline: React.FC = () => {
       setDragStart({ x: e.clientX, scroll: timelineScroll });
     }
   };
+
+  // Click sulla timeline per saltare a quel punto
+  const handleTimelineClick = (e: React.MouseEvent) => {
+    if (isDragging || draggingLoopMarker || draggingPlayhead) return;
+    
+    const rect = timelineRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const x = e.clientX - rect.left + timelineScroll;
+    const time = (x / totalWidth) * duration;
+    
+    setCurrentTime(time);
+    console.log('⏭️ Jumped to:', time.toFixed(2), 's');
+  };
+
+  // Drag del playhead
+  const handlePlayheadMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDraggingPlayhead(true);
+  };
+
+  useEffect(() => {
+    if (!draggingPlayhead) return;
+
+    const handlePlayheadMouseMove = (e: MouseEvent) => {
+      if (!timelineRef.current) return;
+
+      const rect = timelineRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left + timelineScroll;
+      const time = Math.max(0, Math.min(duration, (x / totalWidth) * duration));
+      
+      setCurrentTime(time);
+    };
+
+    const handlePlayheadMouseUp = () => {
+      setDraggingPlayhead(false);
+    };
+
+    document.addEventListener('mousemove', handlePlayheadMouseMove);
+    document.addEventListener('mouseup', handlePlayheadMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handlePlayheadMouseMove);
+      document.removeEventListener('mouseup', handlePlayheadMouseUp);
+    };
+  }, [draggingPlayhead, duration, timelineScroll, totalWidth, setCurrentTime]);
 
   const handleMouseMove = (e: MouseEvent) => {
     if (isDragging) {
@@ -111,10 +162,7 @@ const Timeline: React.FC = () => {
       document.removeEventListener('mousemove', handleLoopMouseMove);
       document.removeEventListener('mouseup', handleLoopMouseUp);
     };
-  }, [draggingLoopMarker, duration, timelineScroll, setLoopStart, setLoopEnd]);
-
-  // Calcola la larghezza totale della timeline con zoom
-  const totalWidth = duration * timelineZoom * 10; // 10px per secondo
+  }, [draggingLoopMarker, duration, timelineScroll, totalWidth, setLoopStart, setLoopEnd]);
 
   return (
     <div className="bg-gray-900 border-b border-gray-700 relative">
@@ -151,7 +199,8 @@ const Timeline: React.FC = () => {
         ref={timelineRef}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
-        style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+        onClick={handleTimelineClick}
+        style={{ cursor: isDragging ? 'grabbing' : draggingPlayhead ? 'grabbing' : 'grab' }}
       >
         {/* Container scrollabile per la timeline */}
         <div 
@@ -217,18 +266,30 @@ const Timeline: React.FC = () => {
           </div>
         )}
 
-        {/* Playhead - cursore di riproduzione */}
+        {/* Playhead - cursore di riproduzione TRASCINABILE */}
         <div
-          className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10 pointer-events-none transition-opacity"
+          className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-30 transition-opacity group"
           style={{ 
             left: `${(currentTime / duration) * totalWidth - timelineScroll}px`,
-            boxShadow: isPlaying ? '0 0 10px rgba(239, 68, 68, 0.6)' : 'none'
+            boxShadow: isPlaying ? '0 0 10px rgba(239, 68, 68, 0.6)' : 'none',
+            cursor: 'ew-resize',
+            pointerEvents: 'auto',
           }}
+          onMouseDown={handlePlayheadMouseDown}
         >
-          <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-red-500 rotate-45 shadow-lg">
+          {/* Area di hover allargata per facilitare il grab */}
+          <div className="absolute inset-y-0 -left-2 -right-2" />
+          
+          {/* Diamante in alto */}
+          <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-red-500 rotate-45 shadow-lg group-hover:w-4 group-hover:h-4 transition-all">
             {isPlaying && (
               <div className="absolute inset-0 bg-red-400 animate-ping opacity-75" />
             )}
+          </div>
+          
+          {/* Tooltip quando hover */}
+          <div className="absolute top-5 left-1/2 -translate-x-1/2 bg-red-500 text-white text-xs px-2 py-0.5 rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            Drag to seek
           </div>
         </div>
       </div>

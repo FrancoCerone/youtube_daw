@@ -20,7 +20,7 @@ interface ClipProps {
 }
 
 const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
-  const { updateClip, removeClip, copyClip, pasteClip, cutClip, clipboardClip, duration, isPlaying, currentTime, loopRestartCount, timelineZoom, timelineScroll, tracks } = useDawStore();
+  const { updateClip, removeClip, copyClip, pasteClip, cutClip, clipboardClip, duration, isPlaying, currentTime, loopRestartCount, manualSeekCount, timelineZoom, timelineScroll, tracks } = useDawStore();
   const clipRef = useRef<HTMLDivElement>(null);
   const [showInfo, setShowInfo] = useState(false);
   const [isResizing, setIsResizing] = useState<'left' | 'right' | null>(null);
@@ -208,7 +208,9 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
     // C'è stato un loop restart, riavvia il video YouTube
     if (activePlayerRef.current && activePlayerRef.current.seekTo) {
       try {
-        const timeInClip = currentTime - clip.startTime;
+        // NON usare currentTime dalle dipendenze, ma lo stato fresco dallo store
+        const state = useDawStore.getState();
+        const timeInClip = state.currentTime - clip.startTime;
         const videoTime = (clip.clipStart || 0) + timeInClip;
         
         activePlayerRef.current.seekTo(videoTime, true);
@@ -217,7 +219,27 @@ const Clip: React.FC<ClipProps> = ({ clip, trackId }) => {
         console.warn('Could not resync player:', e);
       }
     }
-  }, [loopRestartCount, shouldBeActive]);
+  }, [loopRestartCount, shouldBeActive, clip.startTime, clip.clipStart, clip.id]);
+
+  // Rileva seek manuale e riavvia i video
+  useEffect(() => {
+    if (!shouldBeActive || manualSeekCount === 0) return;
+
+    // C'è stato un seek manuale, riavvia il video YouTube alla nuova posizione
+    if (activePlayerRef.current && activePlayerRef.current.seekTo) {
+      try {
+        // NON usare currentTime dalle dipendenze, ma lo stato fresco dallo store
+        const state = useDawStore.getState();
+        const timeInClip = state.currentTime - clip.startTime;
+        const videoTime = (clip.clipStart || 0) + timeInClip;
+        
+        activePlayerRef.current.seekTo(videoTime, true);
+        console.log('⏭️ Resyncing YouTube player after manual seek - Clip:', clip.id, 'VideoTime:', videoTime.toFixed(2), 's');
+      } catch (e) {
+        console.warn('Could not resync player:', e);
+      }
+    }
+  }, [manualSeekCount, shouldBeActive, clip.startTime, clip.clipStart, clip.id]);
 
   // Aggiorna il volume quando cambia (traccia, clip o fade) - OGNI FRAME durante il fade
   useEffect(() => {

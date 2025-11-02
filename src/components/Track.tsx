@@ -25,7 +25,7 @@ interface DropPreview {
 }
 
 const Track: React.FC<TrackProps> = ({ track }) => {
-  const { addClip, updateClip, removeClip, setTrackVolume, duration, currentTime, isPlaying, isLooping, loopStart, loopEnd, setLoopStart, setLoopEnd, timelineZoom, timelineScroll } = useDawStore();
+  const { addClip, updateClip, removeClip, setTrackVolume, duration, currentTime, isPlaying, isLooping, loopStart, loopEnd, setCurrentTime, setLoopStart, setLoopEnd, timelineZoom, timelineScroll } = useDawStore();
   const [showInput, setShowInput] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [clipSettings, setClipSettings] = useState({
@@ -34,6 +34,7 @@ const Track: React.FC<TrackProps> = ({ track }) => {
   });
   const [dropPreview, setDropPreview] = useState<DropPreview | null>(null);
   const [draggingLoopMarker, setDraggingLoopMarker] = useState<'start' | 'end' | null>(null);
+  const [draggingPlayhead, setDraggingPlayhead] = useState(false);
 
   const [{ isOver, canDrop }, drop] = useDrop<DragItem, void, { isOver: boolean; canDrop: boolean }>({
     accept: 'CLIP',
@@ -174,6 +175,39 @@ const Track: React.FC<TrackProps> = ({ track }) => {
   }, [draggingLoopMarker, track.id, duration, timelineZoom, timelineScroll, setLoopStart, setLoopEnd]);
 
   const totalWidth = duration * timelineZoom * 10;
+
+  // Drag del playhead sulle tracce
+  const handlePlayheadMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDraggingPlayhead(true);
+  };
+
+  React.useEffect(() => {
+    if (!draggingPlayhead) return;
+
+    const handlePlayheadMouseMove = (e: MouseEvent) => {
+      const container = document.getElementById(`track-${track.id}`);
+      if (!container) return;
+
+      const rect = container.getBoundingClientRect();
+      const x = e.clientX - rect.left + timelineScroll;
+      const time = Math.max(0, Math.min(duration, (x / totalWidth) * duration));
+      
+      setCurrentTime(time);
+    };
+
+    const handlePlayheadMouseUp = () => {
+      setDraggingPlayhead(false);
+    };
+
+    document.addEventListener('mousemove', handlePlayheadMouseMove);
+    document.addEventListener('mouseup', handlePlayheadMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handlePlayheadMouseMove);
+      document.removeEventListener('mouseup', handlePlayheadMouseUp);
+    };
+  }, [draggingPlayhead, track.id, duration, totalWidth, timelineScroll, setCurrentTime]);
 
   return (
     <div className="border-b border-gray-800">
@@ -320,15 +354,27 @@ const Track: React.FC<TrackProps> = ({ track }) => {
             </div>
           )}
 
-          {/* Playhead - cursore di riproduzione sulla traccia */}
+          {/* Playhead - cursore di riproduzione TRASCINABILE sulla traccia */}
           <div
-            className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-20 pointer-events-none"
+            className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-30 group"
             style={{ 
               left: `${(currentTime / duration) * (duration * timelineZoom * 10) - timelineScroll}px`,
-              boxShadow: isPlaying ? '0 0 8px rgba(239, 68, 68, 0.5)' : 'none'
+              boxShadow: isPlaying ? '0 0 8px rgba(239, 68, 68, 0.5)' : 'none',
+              cursor: 'ew-resize',
+              pointerEvents: 'auto',
             }}
+            onMouseDown={handlePlayheadMouseDown}
           >
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2 h-2 bg-red-500 rounded-full shadow-lg" />
+            {/* Area di hover allargata */}
+            <div className="absolute inset-y-0 -left-3 -right-3" />
+            
+            {/* Pallino in alto */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2 h-2 bg-red-500 rounded-full shadow-lg group-hover:w-3 group-hover:h-3 transition-all border border-white" />
+            
+            {/* Tooltip quando hover */}
+            <div className="absolute top-1/2 left-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+              ↔️ Drag
+            </div>
           </div>
 
           {/* Drop Preview - mostra dove la clip verrà rilasciata */}

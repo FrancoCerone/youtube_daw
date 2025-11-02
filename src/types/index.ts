@@ -35,6 +35,7 @@ export interface DawState {
   loopStart: number;
   loopEnd: number;
   loopRestartCount: number; // Incrementa ogni volta che il loop riparte
+  manualSeekCount: number; // Incrementa ogni volta che l'utente fa un seek manuale
 }
 
 // Tipi per le azioni dello store
