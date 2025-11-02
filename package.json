@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "description": "Digital Audio Workstation web-based per creare e mixare musica usando video YouTube",
   "type": "module",
+  "homepage": "https://francocerone.github.io/youtube_daw/",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
