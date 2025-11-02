@@ -1,7 +1,7 @@
 {
   "name": "youtube_daw",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Digital Audio Workstation web-based per creare e mixare musica usando video YouTube",
   "type": "module",
   "homepage": "https://francocerone.github.io/youtube_daw/",

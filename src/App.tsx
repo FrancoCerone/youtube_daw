@@ -24,13 +24,25 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-gray-950 text-white">
         {/* Header */}
         <header className="bg-gray-900 border-b border-gray-800 p-4">
-          <div className="max-w-7xl mx-auto">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-              YouTube DAW
-            </h1>
-            <p className="text-sm text-gray-400 mt-1">
-              Digital Audio Workstation - Crea, mixa e produce con YouTube
-            </p>
+          <div className="max-w-7xl mx-auto flex items-start justify-between">
+            <div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                YouTube DAW
+              </h1>
+              <p className="text-sm text-gray-400 mt-1">
+                Digital Audio Workstation - Crea, mixa e produce con YouTube
+              </p>
+            </div>
+            
+            {/* Version Badge */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">v1.0.0</span>
+              <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30 px-3 py-1 rounded-full">
+                <span className="text-xs font-semibold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                  BETA
+                </span>
+              </div>
+            </div>
           </div>
         </header>
 
